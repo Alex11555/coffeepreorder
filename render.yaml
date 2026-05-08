@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: coffeepreorderqr-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build && npm run prisma:deploy
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # you paste this in the Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random string
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: NODE_ENV
+        value: production

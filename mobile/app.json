@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "CoffeePreorderQR",
+    "slug": "coffee-preorder-qr",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1a0a04"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.coffeepreorderqr"
+    },
+    "android": {
+      "package": "com.example.coffeepreorderqr"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {},
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

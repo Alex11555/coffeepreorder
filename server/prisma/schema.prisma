@@ -1,0 +1,98 @@
+// CoffeePreorderQR — Prisma schema
+// Postgres-backed. Run `npx prisma migrate dev --name init` after editing.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  STAFF
+}
+
+enum OrderStatus {
+  PAID         // payment captured, waiting on barista
+  PREPARING    // barista is making it
+  READY        // dropped in locker, awaiting pickup
+  PICKED_UP    // QR was scanned, door opened, done
+  CANCELLED
+}
+
+enum LockerStatus {
+  AVAILABLE
+  RESERVED   // assigned to an active order
+  OCCUPIED   // order is sitting inside, waiting for pickup
+  OFFLINE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  orders       Order[]
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  priceCents  Int
+  imageUrl    String?
+  emoji       String?     // small glyph rendered in the UI tile
+  category    String?     // e.g. "Espresso", "Cold Brew", "Lattes", "Tea"
+  available   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  orderItems  OrderItem[]
+}
+
+model Locker {
+  id        String       @id @default(cuid())
+  number    Int          @unique
+  location  String       // human label, e.g. "Lobby — bay A"
+  status    LockerStatus @default(AVAILABLE)
+  orders    Order[]
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  lockerId     String
+  locker       Locker      @relation(fields: [lockerId], references: [id])
+  status       OrderStatus @default(PAID)
+  totalCents   Int
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  items        OrderItem[]
+  qrCode       QrCode?
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int
+  priceCents Int     // captured at purchase time
+  notes      String?
+}
+
+// QR pickup token. We only persist the sha-256 of the raw token — the
+// raw value is returned to the phone exactly once.
+model QrCode {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  usedAt     DateTime?
+}
