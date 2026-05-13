@@ -1,0 +1,16 @@
+[Unit]
+Description=CoffeePreorderQR locker scanner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/CoffeePreorderQR/pi
+EnvironmentFile=/home/pi/CoffeePreorderQR/pi/.env
+ExecStart=/home/pi/CoffeePreorderQR/pi/.venv/bin/python /home/pi/CoffeePreorderQR/pi/scanner.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
