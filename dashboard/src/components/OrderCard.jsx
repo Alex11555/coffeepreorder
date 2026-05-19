@@ -1,8 +1,9 @@
 // One order card on the dashboard.
 //
-// Header: short ID + age + status badge.
-// Body: items (qty, name, optional notes), customer name, locker location.
-// Footer: state-machine action button(s) — "Start Preparing" / "Mark Ready" / "Cancel".
+// For active orders (PAID/PREPARING/READY): shows the state-machine action
+// button(s) — "Start Preparing" / "Mark Ready" / "Cancel".
+// For finalised orders (PICKED_UP): renders a compact card with just a
+// trash icon in the header so the barista can clear it from the board.
 import React, { useState } from 'react';
 
 import StatusBadge from './StatusBadge.jsx';
@@ -14,10 +15,11 @@ const NEXT = {
   READY:     { label: 'Awaiting pickup', target: null,        tone: 'idle' },
 };
 
-export default function OrderCard({ order, onStatusChange }) {
+export default function OrderCard({ order, onStatusChange, onDelete }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const action = NEXT[order.status];
+  const isPickedUp = order.status === 'PICKED_UP';
 
   async function bump(target) {
     if (!target || busy) return;
@@ -32,14 +34,42 @@ export default function OrderCard({ order, onStatusChange }) {
     }
   }
 
+  async function handleDelete() {
+    if (busy) return;
+    if (!onDelete) return;
+    if (!confirm('Delete this order from the board?')) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onDelete(order.id);
+    } catch (e) {
+      setError(e.message || 'Failed to delete');
+      setBusy(false);
+    }
+    // No need to reset busy on success — card disappears from view.
+  }
+
   return (
-    <article style={S.card}>
+    <article style={{ ...S.card, ...(isPickedUp ? S.cardDim : null) }}>
       <header style={S.header}>
         <div>
           <div style={S.id}>{shortId(order.id)}</div>
           <div style={S.age}>{timeAgo(order.createdAt)}</div>
         </div>
-        <StatusBadge status={order.status} />
+        <div style={S.headerRight}>
+          <StatusBadge status={order.status} />
+          {isPickedUp && onDelete ? (
+            <button
+              style={S.iconBtn}
+              onClick={handleDelete}
+              disabled={busy}
+              title="Delete this order"
+              aria-label="Delete this order"
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <div style={S.body}>
@@ -72,30 +102,32 @@ export default function OrderCard({ order, onStatusChange }) {
           </div>
         </div>
 
-        <div style={S.actionRow}>
-          {action?.target ? (
-            <button
-              style={{ ...S.actionBtn, ...(action.tone === 'go' ? S.actionGo : S.actionWarn) }}
-              onClick={() => bump(action.target)}
-              disabled={busy}
-            >
-              {busy ? 'Updating…' : action.label}
-            </button>
-          ) : (
-            <div style={S.actionIdle}>{action?.label || ''}</div>
-          )}
-          {order.status !== 'READY' ? (
-            <button
-              style={S.cancelBtn}
-              onClick={() => {
-                if (confirm('Cancel this order? This refunds the locker.')) bump('CANCELLED');
-              }}
-              disabled={busy}
-            >
-              Cancel
-            </button>
-          ) : null}
-        </div>
+        {!isPickedUp ? (
+          <div style={S.actionRow}>
+            {action?.target ? (
+              <button
+                style={{ ...S.actionBtn, ...(action.tone === 'go' ? S.actionGo : S.actionWarn) }}
+                onClick={() => bump(action.target)}
+                disabled={busy}
+              >
+                {busy ? 'Updating…' : action.label}
+              </button>
+            ) : (
+              <div style={S.actionIdle}>{action?.label || ''}</div>
+            )}
+            {order.status !== 'READY' ? (
+              <button
+                style={S.cancelBtn}
+                onClick={() => {
+                  if (confirm('Cancel this order? This refunds the locker.')) bump('CANCELLED');
+                }}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {error ? <div style={S.error}>{error}</div> : null}
       </footer>
@@ -112,13 +144,28 @@ const S = {
     display: 'flex',
     flexDirection: 'column',
   },
+  cardDim: { opacity: 0.85 },
   header: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
     padding: '14px 16px',
     borderBottom: '1px solid var(--border)',
   },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
   id: { fontWeight: 700, fontSize: 13, letterSpacing: 2, color: 'var(--accent-light)' },
   age: { fontSize: 11, color: 'var(--cream-faint)', marginTop: 2 },
+  iconBtn: {
+    background: 'transparent',
+    color: 'var(--cream-muted)',
+    border: '1px solid var(--border-strong)',
+    width: 26, height: 26,
+    borderRadius: 6,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   body: { padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 },
   itemRow: { display: 'flex', alignItems: 'center', gap: 10 },
   qty: {

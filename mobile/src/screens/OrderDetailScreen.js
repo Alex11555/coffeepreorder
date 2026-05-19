@@ -1,10 +1,11 @@
 // One order's full state: items, total, status timeline, and the QR if it's
 // still scannable. Polls live so the dashboard's "Mark Ready" press shows up.
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 
 import ScreenContainer from '../components/ScreenContainer';
 import Card from '../components/Card';
+import Button from '../components/Button';
 import OrderStatusBadge from '../components/OrderStatusBadge';
 import StatusTimeline from '../components/StatusTimeline';
 import QRDisplay from '../components/QRDisplay';
@@ -13,6 +14,8 @@ import EmptyState from '../components/EmptyState';
 
 import useOrderLive from '../utils/useOrderLive';
 import { getItem } from '../utils/storage';
+import { confirmPickup } from '../api/orders';
+import { useCart } from '../context/CartContext';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatPrice, formatStatus, formatTime, formatEta } from '../utils/format';
 
@@ -20,6 +23,9 @@ export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
   const { order, error } = useOrderLive(orderId);
   const [qrToken, setQrToken] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const { clearActive } = useCart();
 
   useEffect(() => {
     (async () => {
@@ -27,6 +33,21 @@ export default function OrderDetailScreen({ route, navigation }) {
       setQrToken(t);
     })();
   }, [orderId]);
+
+  const onConfirmPickup = useCallback(async () => {
+    setConfirmError('');
+    try {
+      setConfirming(true);
+      await confirmPickup(orderId);
+      // useOrderLive will pick up the new status on its next poll;
+      // also drop the active-order cache so My QR tab shows empty state.
+      await clearActive();
+    } catch (e) {
+      setConfirmError(e.message || 'Could not confirm pickup.');
+    } finally {
+      setConfirming(false);
+    }
+  }, [orderId, clearActive]);
 
   if (!order) {
     return (
@@ -42,6 +63,7 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   const eta = formatEta(order);
   const showQR = qrToken && (order.status === 'PAID' || order.status === 'PREPARING' || order.status === 'READY');
+  const canConfirmPickup = order.status === 'READY';
 
   return (
     <ScreenContainer>
@@ -69,6 +91,27 @@ export default function OrderDetailScreen({ route, navigation }) {
               ? 'Show this to the locker scanner to open the door.'
               : 'You\'ll use this once your order is ready.'}
           </Text>
+        </View>
+      ) : null}
+
+      {canConfirmPickup ? (
+        <View style={styles.confirmWrap}>
+          <Button
+            title={confirming ? 'Confirming…' : 'I picked up my order'}
+            onPress={() => {
+              Alert.alert(
+                'Confirm pickup',
+                'Mark this order as collected? This will close it out.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Yes, picked up', style: 'default', onPress: onConfirmPickup },
+                ]
+              );
+            }}
+            loading={confirming}
+            disabled={confirming}
+          />
+          {confirmError ? <Text style={styles.confirmError}>{confirmError}</Text> : null}
         </View>
       ) : null}
 
@@ -107,6 +150,8 @@ const styles = StyleSheet.create({
   eta: { color: colors.accentLight, fontSize: 18, fontWeight: '700', marginTop: 4 },
   etaDetail: { color: colors.creamMuted, fontSize: 12 },
   qrHint: { color: colors.creamMuted, fontSize: 12, marginTop: 12, textAlign: 'center', paddingHorizontal: spacing.lg },
+  confirmWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  confirmError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: 'center' },
   itemsCard: { marginHorizontal: spacing.lg, marginTop: spacing.md, borderRadius: radius.lg },
   heading: { color: colors.creamMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, alignItems: 'flex-start' },

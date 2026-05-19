@@ -1,19 +1,28 @@
-// Live orders page — three columns (New / Preparing / Ready) fed by SSE.
-//
-// When the staff hits "Mark Ready" we PATCH the status; the API broadcasts
-// on the staff channel AND on `order:${id}`, so the customer's mobile app
-// (which polls /api/orders/:id every few seconds) flips to "Ready" almost
-// instantly. Other dashboards open in other browsers also see the update
-// without refreshing.
+// Live orders page — four columns (New / Preparing / Ready / Picked Up)
+// fed by SSE. Picked-up orders show a per-card ✕ delete button and a
+// "Clear all" button in the column header.
 import React, { useCallback, useMemo } from 'react';
 
 import Topbar from '../components/Topbar.jsx';
 import OrdersColumn from '../components/OrdersColumn.jsx';
 import useLiveOrders from '../hooks/useLiveOrders.js';
-import { updateOrderStatus } from '../api/orders.js';
+import {
+  updateOrderStatus,
+  deleteOrder,
+  clearPickedUpOrders,
+} from '../api/orders.js';
 
 export default function OrdersPage() {
-  const { orders, loading, error, connected, applyLocal } = useLiveOrders();
+  const {
+    orders,
+    pickedUp,
+    loading,
+    error,
+    connected,
+    applyLocal,
+    removeById,
+    removeAllPickedUp,
+  } = useLiveOrders();
 
   const grouped = useMemo(() => ({
     PAID:      orders.filter((o) => o.status === 'PAID'),
@@ -29,6 +38,19 @@ export default function OrdersPage() {
     await updateOrderStatus(orderId, status);
   }, [orders, applyLocal]);
 
+  const onDeleteOne = useCallback(async (orderId) => {
+    // Optimistic remove — the SSE will confirm.
+    removeById(orderId);
+    await deleteOrder(orderId);
+  }, [removeById]);
+
+  const onClearAllPickedUp = useCallback(async () => {
+    removeAllPickedUp();
+    await clearPickedUpOrders();
+  }, [removeAllPickedUp]);
+
+  const totalActive = orders.length;
+
   return (
     <div style={S.page}>
       <Topbar live={connected} />
@@ -37,7 +59,7 @@ export default function OrdersPage() {
           <div>
             <h1 style={S.title}>Live Orders</h1>
             <p style={S.subtitle}>
-              {loading ? 'Loading…' : `${orders.length} order${orders.length === 1 ? '' : 's'} on the bar`}
+              {loading ? 'Loading…' : `${totalActive} order${totalActive === 1 ? '' : 's'} on the bar · ${pickedUp.length} picked up`}
             </p>
           </div>
           {error ? <div style={S.error}>{error}</div> : null}
@@ -65,6 +87,15 @@ export default function OrdersPage() {
             emptyText="Nothing waiting in a locker."
             onStatusChange={onStatusChange}
           />
+          <OrdersColumn
+            title="Picked Up"
+            accent="var(--cream-muted)"
+            orders={pickedUp}
+            emptyText="No completed orders yet."
+            onStatusChange={onStatusChange}
+            onDelete={onDeleteOne}
+            onClearAll={onClearAllPickedUp}
+          />
         </div>
       </main>
     </div>
@@ -73,7 +104,7 @@ export default function OrdersPage() {
 
 const S = {
   page: { minHeight: '100vh', background: 'var(--bg)' },
-  main: { padding: '20px 28px 60px', maxWidth: 1400, margin: '0 auto' },
+  main: { padding: '20px 28px 60px', maxWidth: 1600, margin: '0 auto' },
   headerRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -85,8 +116,8 @@ const S = {
   subtitle: { color: 'var(--cream-muted)', fontSize: 13, marginTop: 4 },
   cols: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 24,
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: 20,
   },
   error: { color: 'var(--danger)', fontSize: 13 },
 };

@@ -1,8 +1,9 @@
 // Order placed → success state with the scannable QR + locker info + steps.
 // Polls the order via useOrderLive so it flips to "Ready!" the moment the
-// barista marks it ready in the dashboard.
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+// barista marks it ready in the dashboard. Also gives the customer a one-tap
+// "I picked up my order" button once the order is READY.
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 
 import ScreenContainer from '../components/ScreenContainer';
 import QRDisplay from '../components/QRDisplay';
@@ -10,6 +11,8 @@ import Button from '../components/Button';
 import Loading from '../components/Loading';
 
 import useOrderLive from '../utils/useOrderLive';
+import { confirmPickup } from '../api/orders';
+import { useCart } from '../context/CartContext';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatEta } from '../utils/format';
 
@@ -24,6 +27,22 @@ const SHORT_ID = (id) => 'BRW-' + (id || '').slice(-4).toUpperCase();
 export default function QRCodeScreen({ route, navigation }) {
   const { orderId, qrToken } = route.params;
   const { order, error } = useOrderLive(orderId);
+  const { clearActive } = useCart();
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+
+  const onConfirmPickup = useCallback(async () => {
+    setConfirmError('');
+    try {
+      setConfirming(true);
+      await confirmPickup(orderId);
+      await clearActive();
+    } catch (e) {
+      setConfirmError(e.message || 'Could not confirm pickup.');
+    } finally {
+      setConfirming(false);
+    }
+  }, [orderId, clearActive]);
 
   if (!order) {
     return (
@@ -46,9 +65,11 @@ export default function QRCodeScreen({ route, navigation }) {
         <Text style={styles.title}>{isReady ? 'Ready for Pickup!' : isDone ? 'All Done!' : 'Order Placed!'}</Text>
         <Text style={styles.subtitle}>{eta.detail || 'Your coffee is being prepared ☕'}</Text>
 
-        <View style={{ marginTop: 20, marginBottom: 14 }}>
-          <QRDisplay value={qrToken} size={200} />
-        </View>
+        {!isDone ? (
+          <View style={{ marginTop: 20, marginBottom: 14 }}>
+            <QRDisplay value={qrToken} size={200} />
+          </View>
+        ) : null}
 
         <View style={styles.idBox}>
           <Text style={styles.idLabel}>Order ID</Text>
@@ -59,22 +80,49 @@ export default function QRCodeScreen({ route, navigation }) {
           <Text style={styles.lockerEmoji}>🗄️</Text>
           <View>
             <Text style={styles.lockerName}>{order.locker?.location} Locker</Text>
-            <Text style={styles.lockerHint}>Present QR code to scan & unlock</Text>
+            <Text style={styles.lockerHint}>
+              {isReady ? 'Tap the button below once you have your coffee' : 'Present QR code to scan & unlock'}
+            </Text>
           </View>
         </View>
 
-        <View style={{ width: '100%', marginBottom: 16 }}>
-          {STEPS.map(([n, t]) => (
-            <View key={n} style={styles.stepRow}>
-              <View style={styles.stepDot}><Text style={styles.stepDotText}>{n}</Text></View>
-              <Text style={styles.stepText}>{t}</Text>
-            </View>
-          ))}
-        </View>
+        {!isReady ? (
+          <View style={{ width: '100%', marginBottom: 16 }}>
+            {STEPS.map(([n, t]) => (
+              <View key={n} style={styles.stepRow}>
+                <View style={styles.stepDot}><Text style={styles.stepDotText}>{n}</Text></View>
+                <Text style={styles.stepText}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {isReady ? (
+          <View style={{ width: '100%', marginBottom: 12 }}>
+            <Button
+              title={confirming ? 'Confirming…' : 'I picked up my order'}
+              subtitle="Mark this order complete"
+              loading={confirming}
+              disabled={confirming}
+              onPress={() => {
+                Alert.alert(
+                  'Confirm pickup',
+                  'Mark this order as collected? This will close it out.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Yes, picked up', style: 'default', onPress: onConfirmPickup },
+                  ]
+                );
+              }}
+            />
+            {confirmError ? <Text style={styles.confirmError}>{confirmError}</Text> : null}
+          </View>
+        ) : null}
 
         <Button
           title="Track My Order"
-          subtitle={isReady ? 'Tap to see live status' : `Live status: ${eta.label}`}
+          subtitle={isReady ? 'See live status & details' : `Live status: ${eta.label}`}
+          variant="secondary"
           onPress={() => navigation.replace('OrderDetail', { orderId: order.id })}
         />
       </View>
@@ -100,6 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 10, paddingHorizontal: 24,
     alignItems: 'center',
+    marginTop: 14,
     marginBottom: 14,
   },
   idLabel: { color: colors.creamFaint, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
@@ -129,4 +178,5 @@ const styles = StyleSheet.create({
   },
   stepDotText: { color: colors.accentLight, fontSize: 11, fontWeight: '700' },
   stepText: { color: colors.creamMuted, fontSize: 12, lineHeight: 18, flex: 1 },
+  confirmError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: 'center' },
 });

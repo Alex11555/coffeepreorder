@@ -61,7 +61,6 @@ router.post('/', requireAuth, async (req, res, next) => {
     0
   );
 
-  // Mock payment "capture". Swap for Stripe and only proceed on success.
   const paymentOk = true;
   if (!paymentOk) return next({ status: 402, message: 'Payment declined' });
 
@@ -132,7 +131,43 @@ router.get('/active', requireAuth, requireStaff, async (_req, res) => {
   res.json(orders.map((o) => serializeOrder(o, { includeUser: true })));
 });
 
-// Staff SSE — every order create / status change.
+// Staff-only: recently picked-up orders, newest first. Shown on the
+// dashboard as a "Picked Up" section that the barista can clear out.
+router.get('/picked-up', requireAuth, requireStaff, async (_req, res) => {
+  const orders = await prisma.order.findMany({
+    where: { status: 'PICKED_UP' },
+    orderBy: { updatedAt: 'desc' },
+    take: 50,
+    include: {
+      items: { include: { product: true } },
+      locker: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+  res.json(orders.map((o) => serializeOrder(o, { includeUser: true })));
+});
+
+// Staff-only bulk delete: nuke all picked-up orders in one click.
+// Must come BEFORE the `/:id` routes so the path doesn't match :id="picked-up".
+router.delete('/picked-up', requireAuth, requireStaff, async (_req, res, next) => {
+  try {
+    const targets = await prisma.order.findMany({
+      where: { status: 'PICKED_UP' },
+      select: { id: true },
+    });
+    if (targets.length === 0) return res.json({ deleted: 0, ids: [] });
+    const ids = targets.map((t) => t.id);
+    // OrderItem + QrCode cascade-delete via FK onDelete: Cascade.
+    await prisma.order.deleteMany({ where: { id: { in: ids } } });
+    // Tell every connected dashboard so they drop the cards in real-time.
+    ids.forEach((id) => publishOrderEvent('order.deleted', { id }));
+    res.json({ deleted: ids.length, ids });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Staff SSE — every order create / status change / deletion.
 router.get(
   '/stream',
   requireAuthOrQuery,
@@ -220,6 +255,62 @@ router.patch('/:id/status', requireAuth, requireStaff, async (req, res, next) =>
   const serialized = serializeOrder(updated, { includeUser: true });
   publishOrderEvent('order.updated', serialized);
   res.json(serializeOrder(updated));
+});
+
+// Customer (or staff) confirms they picked up the order from the locker.
+// This is a "soft pickup" path used by the mobile app's "I picked up my order"
+// button — the alternative to the Pi locker scanner POSTing to /api/pickup/scan.
+// Only allowed when status === 'READY'. Marks the order PICKED_UP, frees the
+// locker, and burns the QR token so it can't be reused.
+router.post('/:id/picked-up', requireAuth, async (req, res, next) => {
+  const order = await prisma.order.findUnique({
+    where: { id: req.params.id },
+    include: { qrCode: true },
+  });
+  if (!order) return next({ status: 404, message: 'Order not found' });
+  if (order.userId !== req.user.id && req.user.role !== 'STAFF') {
+    return next({ status: 403, message: 'Not yours' });
+  }
+  if (order.status !== 'READY') {
+    return next({ status: 409, message: `Order not ready (status: ${order.status})` });
+  }
+
+  await prisma.$transaction([
+    prisma.order.update({ where: { id: order.id }, data: { status: 'PICKED_UP' } }),
+    prisma.locker.update({ where: { id: order.lockerId }, data: { status: 'AVAILABLE' } }),
+    ...(order.qrCode && !order.qrCode.usedAt
+      ? [prisma.qrCode.update({ where: { id: order.qrCode.id }, data: { usedAt: new Date() } })]
+      : []),
+  ]);
+
+  const updated = await prisma.order.findUnique({
+    where: { id: order.id },
+    include: {
+      items: { include: { product: true } },
+      locker: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+  const serialized = serializeOrder(updated, { includeUser: true });
+  publishOrderEvent('order.updated', serialized);
+  res.json(serializeOrder(updated));
+});
+
+// Staff-only: delete a single order. Only finalised orders (PICKED_UP /
+// CANCELLED) can be deleted — we don't want to accidentally nuke an active
+// order that's still on the bar.
+router.delete('/:id', requireAuth, requireStaff, async (req, res, next) => {
+  const order = await prisma.order.findUnique({ where: { id: req.params.id } });
+  if (!order) return next({ status: 404, message: 'Order not found' });
+  if (!['PICKED_UP', 'CANCELLED'].includes(order.status)) {
+    return next({
+      status: 409,
+      message: `Cannot delete an active order (status: ${order.status})`,
+    });
+  }
+  await prisma.order.delete({ where: { id: order.id } });
+  publishOrderEvent('order.deleted', { id: order.id });
+  res.json({ ok: true, id: order.id });
 });
 
 function serializeOrder(o, { includeUser = false } = {}) {
