@@ -10,6 +10,7 @@ const menuRoutes = require('./routes/menu');
 const lockerRoutes = require('./routes/lockers');
 const orderRoutes = require('./routes/orders');
 const pickupRoutes = require('./routes/pickup');
+const lockerHubRoutes = require('./routes/lockerHub');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/lockers', lockerRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/pickup', pickupRoutes);
+app.use('/api/locker-hub', lockerHubRoutes);
 
 // 404 + error fallback
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

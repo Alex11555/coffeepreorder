@@ -1,17 +1,16 @@
 // Tap a drink → land here. Customize Size/Milk/Extras, set quantity,
-// pick a locker, then proceed to Payment.
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+// then proceed to Payment. The pickup compartment is assigned automatically
+// by the server at checkout (single cabinet, 4 doors), so there's no locker
+// picker anymore.
+import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 import ScreenContainer from '../components/ScreenContainer';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import OptionPill from '../components/OptionPill';
-import LockerCard from '../components/LockerCard';
 import QuantityStepper from '../components/QuantityStepper';
-import Loading from '../components/Loading';
 
-import { fetchLockers } from '../api/lockers';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatPrice } from '../utils/format';
 
@@ -26,37 +25,11 @@ export default function OrderScreen({ route, navigation }) {
   const [extras, setExtras] = useState([]);
   const [qty, setQty] = useState(1);
 
-  const [lockers, setLockers] = useState([]);
-  const [lockersLoading, setLockersLoading] = useState(true);
-  const [lockerId, setLockerId] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await fetchLockers();
-        if (cancelled) return;
-        setLockers(data);
-        const firstFree = data.find((l) => l.status === 'AVAILABLE');
-        if (firstFree) setLockerId(firstFree.id);
-      } catch (e) {
-        if (!cancelled) setError(e.message || 'Failed to load lockers');
-      } finally {
-        if (!cancelled) setLockersLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   const toggleExtra = useCallback((e) => {
     setExtras((prev) => (prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e]));
   }, []);
 
   const total = useMemo(() => product.priceCents * qty, [product, qty]);
-
-  const selectedLocker = lockers.find((l) => l.id === lockerId);
-  const canCheckout = !!selectedLocker;
 
   return (
     <ScreenContainer>
@@ -105,30 +78,18 @@ export default function OrderScreen({ route, navigation }) {
         <Text style={styles.totalValue}>{formatPrice(total)}</Text>
       </View>
 
-      <View style={{ paddingHorizontal: spacing.lg, marginBottom: 14 }}>
-        <Text style={styles.lockerHeader}>🗄️  Choose pickup locker</Text>
-        {lockersLoading ? (
-          <Loading label="Checking lockers…" />
-        ) : (
-          <View style={styles.lockerGrid}>
-            {lockers.map((l) => (
-              <LockerCard
-                key={l.id}
-                locker={l}
-                selected={lockerId === l.id}
-                onPress={() => setLockerId(l.id)}
-              />
-            ))}
-          </View>
-        )}
-        {error ? <Text style={{ color: colors.danger, marginTop: 8 }}>{error}</Text> : null}
+      <View style={styles.pickupNote}>
+        <Text style={styles.pickupEmoji}>🗄️</Text>
+        <Text style={styles.pickupText}>
+          A pickup door is assigned automatically when you pay. You'll see your
+          door number and QR right after checkout.
+        </Text>
       </View>
 
       <View style={{ paddingHorizontal: spacing.lg }}>
         <Button
           title="Proceed to Checkout"
-          subtitle={canCheckout ? 'Tap to review your order' : 'Pick an available locker first'}
-          disabled={!canCheckout}
+          subtitle="Tap to review your order"
           onPress={() =>
             navigation.navigate('Payment', {
               product,
@@ -136,7 +97,6 @@ export default function OrderScreen({ route, navigation }) {
               size,
               milk,
               extras,
-              locker: selectedLocker,
             })
           }
         />
@@ -188,10 +148,18 @@ const styles = StyleSheet.create({
   },
   totalLabel: { color: colors.creamMuted, fontSize: 14 },
   totalValue: { color: colors.accentLight, fontSize: 26, fontWeight: '700' },
-  lockerHeader: { color: colors.cream, fontSize: 13, fontWeight: '600', marginBottom: 10 },
-  lockerGrid: {
+  pickupNote: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: 16,
+    backgroundColor: 'rgba(212,128,42,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(212,128,42,0.22)',
+    borderRadius: radius.md,
+    padding: 14,
   },
+  pickupEmoji: { fontSize: 24 },
+  pickupText: { flex: 1, color: colors.creamMuted, fontSize: 12, lineHeight: 17 },
 });

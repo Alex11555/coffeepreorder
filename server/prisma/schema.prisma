@@ -18,23 +18,25 @@ enum Role {
 enum OrderStatus {
   PAID         // payment captured, waiting on barista
   PREPARING    // barista is making it
-  READY        // dropped in locker, awaiting pickup
-  PICKED_UP    // QR was scanned, door opened, done
+  READY        // dropped in the compartment, awaiting pickup
+  PICKED_UP    // door opened, done
   CANCELLED
 }
 
 enum LockerStatus {
   AVAILABLE
   RESERVED   // assigned to an active order
-  OCCUPIED   // order is sitting inside, waiting for pickup
+  OCCUPIED   // coffee is sitting inside, waiting for pickup
   OFFLINE
 }
 
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
-  passwordHash String
+  passwordHash String?
   name         String?
+  googleId     String?  @unique
+  avatarUrl    String?
   role         Role     @default(CUSTOMER)
   createdAt    DateTime @default(now())
   orders       Order[]
@@ -46,19 +48,24 @@ model Product {
   description String?
   priceCents  Int
   imageUrl    String?
-  emoji       String?     // small glyph rendered in the UI tile
-  category    String?     // e.g. "Espresso", "Cold Brew", "Lattes", "Tea"
+  emoji       String?
+  category    String?
   available   Boolean     @default(true)
   createdAt   DateTime    @default(now())
   orderItems  OrderItem[]
 }
 
+// A physical compartment (one solenoid) in the single locker cabinet.
+// `number` maps to a GPIO pin on the Raspberry Pi (see pi/locker_hub.py).
 model Locker {
-  id        String       @id @default(cuid())
-  number    Int          @unique
-  location  String       // human label, e.g. "Lobby — bay A"
-  status    LockerStatus @default(AVAILABLE)
-  orders    Order[]
+  id            String       @id @default(cuid())
+  number        Int          @unique
+  location      String       // shared label for the whole cabinet, e.g. "Coffee Counter"
+  status        LockerStatus @default(AVAILABLE)
+  // Set true when a door should physically open. The Pi polls for these,
+  // pulses the solenoid, then acks (sets it back to false).
+  unlockPending Boolean      @default(false)
+  orders        Order[]
 }
 
 model Order {
@@ -82,12 +89,10 @@ model OrderItem {
   productId  String
   product    Product @relation(fields: [productId], references: [id])
   quantity   Int
-  priceCents Int     // captured at purchase time
+  priceCents Int
   notes      String?
 }
 
-// QR pickup token. We only persist the sha-256 of the raw token — the
-// raw value is returned to the phone exactly once.
 model QrCode {
   id         String   @id @default(cuid())
   orderId    String   @unique

@@ -18,7 +18,12 @@ function stateOf(stepKey, current) {
   const ci = ORDER.indexOf(current);
   const si = ORDER.indexOf(stepKey);
   if (si < ci) return 'done';
-  if (si === ci) return 'active';
+  if (si === ci) {
+    // PICKED_UP is the terminal state — when we're on it, it's "done", not
+    // "in progress" (there's nothing further to do).
+    if (stepKey === 'PICKED_UP') return 'done';
+    return 'active';
+  }
   return 'pending';
 }
 

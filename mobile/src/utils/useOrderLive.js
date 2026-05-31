@@ -25,7 +25,13 @@ export default function useOrderLive(orderId, { initial = null, intervalMs = 300
   }, [orderId]);
 
   useEffect(() => {
-    if (!orderId) return undefined;
+    // When orderId is cleared (e.g. after pickup), reset cached order
+    // so callers don't render stale data.
+    if (!orderId) {
+      setOrder(null);
+      setError('');
+      return undefined;
+    }
     let cancelled = false;
     let timer = null;
 

@@ -43,7 +43,12 @@ router.post('/scan', async (req, res, next) => {
   await prisma.$transaction([
     prisma.qrCode.update({ where: { id: qr.id }, data: { usedAt: new Date() } }),
     prisma.order.update({ where: { id: order.id }, data: { status: 'PICKED_UP' } }),
-    prisma.locker.update({ where: { id: order.lockerId }, data: { status: 'AVAILABLE' } }),
+    // Free the compartment AND flag it to physically open — the Pi polls for
+    // unlockPending and pulses the matching solenoid.
+    prisma.locker.update({
+      where: { id: order.lockerId },
+      data: { status: 'AVAILABLE', unlockPending: true },
+    }),
   ]);
 
   // Refetch the now-picked-up order with its joins, then broadcast.

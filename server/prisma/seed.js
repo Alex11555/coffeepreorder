@@ -1,5 +1,5 @@
-// Seed: menu items, lockers, and a staff (barista) account.
-// Re-running is safe: products are upserted by name, lockers by number.
+// Seed: menu items, the 4-compartment locker cabinet, and a staff account.
+// Re-running is safe: products upsert by name, lockers by number.
 // Usage: npm run seed
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
@@ -21,20 +21,10 @@ const PRODUCTS = [
   { name: 'Chai Latte',    description: 'Spiced black tea + milk.',               priceCents: 475, emoji: '🫖', category: 'Tea'      },
 ];
 
-const LOCKERS = [
-  { number: 1,  location: 'Main Lobby' },
-  { number: 2,  location: 'Floor 3' },
-  { number: 3,  location: 'Rooftop' },
-  { number: 4,  location: 'Cafeteria' },
-  { number: 5,  location: 'East Wing' },
-  { number: 6,  location: 'West Exit' },
-  { number: 7,  location: 'Lobby — bay A7' },
-  { number: 8,  location: 'Lobby — bay A8' },
-  { number: 9,  location: 'Lobby — bay B1' },
-  { number: 10, location: 'Lobby — bay B2' },
-  { number: 11, location: 'Lobby — bay B3' },
-  { number: 12, location: 'Lobby — bay B4' },
-];
+// ONE physical cabinet, FOUR compartments. Each `number` maps to a GPIO pin
+// on the Raspberry Pi (see pi/locker_hub.py: 1→GPIO17, 2→GPIO27, 3→GPIO22, 4→GPIO23).
+const LOCATION = 'Coffee Counter';
+const COMPARTMENTS = [1, 2, 3, 4];
 
 async function main() {
   console.log('Seeding products…');
@@ -50,14 +40,23 @@ async function main() {
     }
   }
 
-  console.log('Seeding lockers…');
-  for (const l of LOCKERS) {
+  console.log('Seeding the 4 locker compartments…');
+  for (const number of COMPARTMENTS) {
     await prisma.locker.upsert({
-      where: { number: l.number },
-      update: { location: l.location },
-      create: l,
+      where: { number },
+      update: { location: LOCATION, unlockPending: false },
+      create: { number, location: LOCATION },
     });
   }
+
+  // Retire any legacy lockers from older seeds (numbers > 4): mark OFFLINE so
+  // they're never auto-assigned. We can't delete them if past orders point at
+  // them (FK), so OFFLINE is the safe move.
+  const retired = await prisma.locker.updateMany({
+    where: { number: { gt: 4 } },
+    data: { status: 'OFFLINE' },
+  });
+  if (retired.count) console.log(`  retired ${retired.count} legacy locker(s) → OFFLINE`);
 
   console.log('Seeding staff account…');
   const staffEmail = 'barista@coffee.app';

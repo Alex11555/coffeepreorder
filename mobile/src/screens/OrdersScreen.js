@@ -48,7 +48,10 @@ export default function OrdersScreen({ navigation }) {
   if (loading) return <Loading label="Loading your orders…" />;
 
   // Prefer the live-polled version of the active order if available.
-  const active = liveActive || orders.find((o) => ACTIVE.has(o.status));
+  // BUT only treat it as "active" if it's still in an active status — otherwise
+  // a freshly-picked-up order would linger on this screen as if still active.
+  const liveActiveStillActive = liveActive && ACTIVE.has(liveActive.status) ? liveActive : null;
+  const active = liveActiveStillActive || orders.find((o) => ACTIVE.has(o.status));
   const past = orders.filter((o) => !active || o.id !== active.id);
 
   return (

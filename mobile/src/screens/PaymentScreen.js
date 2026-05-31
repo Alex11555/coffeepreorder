@@ -20,7 +20,7 @@ const PAYMENT_METHODS = [
 ];
 
 export default function PaymentScreen({ route, navigation }) {
-  const { product, qty, size, milk, extras, locker } = route.params;
+  const { product, qty, size, milk, extras } = route.params;
   const { setActive } = useCart();
 
   const [methodId, setMethodId] = useState('mock_card');
@@ -39,7 +39,7 @@ export default function PaymentScreen({ route, navigation }) {
     setPaying(true);
     try {
       const { order, qrToken } = await createOrder({
-        lockerId: locker.id,
+        // No lockerId — the server auto-assigns an available compartment.
         items: [{ productId: product.id, quantity: qty, notes: customizationNote }],
         payment: { method: methodId },
       });
@@ -66,7 +66,7 @@ export default function PaymentScreen({ route, navigation }) {
       <Card style={styles.summary}>
         <CartItemRow label="Item"          value={`${product.name} × ${qty}`} />
         <CartItemRow label="Customizations" value={`${milk} milk · ${size}`} />
-        <CartItemRow label="Pickup Locker" value={locker.location} />
+        <CartItemRow label="Pickup" value="Door assigned at checkout" />
         <CartItemRow label="Est. Ready"    value="~8 minutes" accent divider={false} />
         <View style={styles.summaryTotal}>
           <Text style={styles.totalLabel}>Total</Text>
