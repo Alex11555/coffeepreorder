@@ -1,7 +1,6 @@
-// Order placed → success state with the scannable QR + locker info + steps.
-// Polls the order via useOrderLive so it flips to "Ready!" the moment the
-// barista marks it ready in the dashboard. Also gives the customer a one-tap
-// "I picked up my order" button once the order is READY.
+// Order placed → success state with the assigned compartment, scannable QR,
+// and (once READY) an "Open Door" button that pops the solenoid via the backend.
+// Polls live so it flips to "Ready!" the moment the barista marks it ready.
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 
@@ -11,38 +10,39 @@ import Button from '../components/Button';
 import Loading from '../components/Loading';
 
 import useOrderLive from '../utils/useOrderLive';
-import { confirmPickup } from '../api/orders';
+import { openDoor } from '../api/orders';
 import { useCart } from '../context/CartContext';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatEta } from '../utils/format';
 
 const STEPS = [
-  ['1', 'Head to your chosen locker once you get a notification'],
-  ['2', 'Open the app and show the QR code to the scanner'],
-  ['3', 'The locker opens automatically — enjoy your coffee ☕'],
+  ['1', 'Wait for the "Ready" notification'],
+  ['2', 'Walk up to the coffee cabinet'],
+  ['3', 'Tap "Open Door" or scan your QR — the door pops open ☕'],
 ];
 
 const SHORT_ID = (id) => 'BRW-' + (id || '').slice(-4).toUpperCase();
 
 export default function QRCodeScreen({ route, navigation }) {
   const { orderId, qrToken } = route.params;
-  const { order, error } = useOrderLive(orderId);
+  const { order, error, refresh } = useOrderLive(orderId);
   const { clearActive } = useCart();
-  const [confirming, setConfirming] = useState(false);
-  const [confirmError, setConfirmError] = useState('');
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState('');
 
-  const onConfirmPickup = useCallback(async () => {
-    setConfirmError('');
+  const onOpen = useCallback(async () => {
+    setOpenError('');
     try {
-      setConfirming(true);
-      await confirmPickup(orderId);
+      setOpening(true);
+      await openDoor(orderId);
+      await refresh();
       await clearActive();
     } catch (e) {
-      setConfirmError(e.message || 'Could not confirm pickup.');
+      setOpenError(e.message || 'Could not open the door.');
     } finally {
-      setConfirming(false);
+      setOpening(false);
     }
-  }, [orderId, clearActive]);
+  }, [orderId, refresh, clearActive]);
 
   if (!order) {
     return (
@@ -55,6 +55,7 @@ export default function QRCodeScreen({ route, navigation }) {
   const eta = formatEta(order);
   const isReady = order.status === 'READY';
   const isDone = order.status === 'PICKED_UP';
+  const doorNo = order.locker?.number;
 
   return (
     <ScreenContainer>
@@ -65,9 +66,15 @@ export default function QRCodeScreen({ route, navigation }) {
         <Text style={styles.title}>{isReady ? 'Ready for Pickup!' : isDone ? 'All Done!' : 'Order Placed!'}</Text>
         <Text style={styles.subtitle}>{eta.detail || 'Your coffee is being prepared ☕'}</Text>
 
+        <View style={styles.doorBadge}>
+          <Text style={styles.doorLabel}>YOUR DOOR</Text>
+          <Text style={styles.doorNumber}>{doorNo != null ? doorNo : '—'}</Text>
+          <Text style={styles.doorSub}>{order.locker?.location || 'Coffee Counter'}</Text>
+        </View>
+
         {!isDone ? (
-          <View style={{ marginTop: 20, marginBottom: 14 }}>
-            <QRDisplay value={qrToken} size={200} />
+          <View style={{ marginTop: 8, marginBottom: 14 }}>
+            <QRDisplay value={qrToken} size={180} />
           </View>
         ) : null}
 
@@ -76,17 +83,29 @@ export default function QRCodeScreen({ route, navigation }) {
           <Text style={styles.idValue}>{SHORT_ID(order.id)}</Text>
         </View>
 
-        <View style={styles.lockerBox}>
-          <Text style={styles.lockerEmoji}>🗄️</Text>
-          <View>
-            <Text style={styles.lockerName}>{order.locker?.location} Locker</Text>
-            <Text style={styles.lockerHint}>
-              {isReady ? 'Tap the button below once you have your coffee' : 'Present QR code to scan & unlock'}
-            </Text>
+        {isReady ? (
+          <View style={{ width: '100%', marginBottom: 12 }}>
+            <Button
+              title={opening ? 'Opening…' : `Open Door ${doorNo ?? ''}`}
+              subtitle="Pops the lock & marks collected"
+              loading={opening}
+              disabled={opening}
+              onPress={() => {
+                Alert.alert(
+                  'Open the door?',
+                  `This unlocks door ${doorNo}. Make sure you're at the cabinet.`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Open', style: 'default', onPress: onOpen },
+                  ]
+                );
+              }}
+            />
+            {openError ? <Text style={styles.openError}>{openError}</Text> : null}
           </View>
-        </View>
+        ) : null}
 
-        {!isReady ? (
+        {!isReady && !isDone ? (
           <View style={{ width: '100%', marginBottom: 16 }}>
             {STEPS.map(([n, t]) => (
               <View key={n} style={styles.stepRow}>
@@ -94,28 +113,6 @@ export default function QRCodeScreen({ route, navigation }) {
                 <Text style={styles.stepText}>{t}</Text>
               </View>
             ))}
-          </View>
-        ) : null}
-
-        {isReady ? (
-          <View style={{ width: '100%', marginBottom: 12 }}>
-            <Button
-              title={confirming ? 'Confirming…' : 'I picked up my order'}
-              subtitle="Mark this order complete"
-              loading={confirming}
-              disabled={confirming}
-              onPress={() => {
-                Alert.alert(
-                  'Confirm pickup',
-                  'Mark this order as collected? This will close it out.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Yes, picked up', style: 'default', onPress: onConfirmPickup },
-                  ]
-                );
-              }}
-            />
-            {confirmError ? <Text style={styles.confirmError}>{confirmError}</Text> : null}
           </View>
         ) : null}
 
@@ -133,38 +130,37 @@ export default function QRCodeScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   center: { alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl },
   checkBubble: {
-    width: 70, height: 70, borderRadius: 35,
+    width: 64, height: 64, borderRadius: 32,
     backgroundColor: '#4caf7d',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
     shadowColor: '#4caf7d', shadowOpacity: 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  checkText: { fontSize: 32, color: 'white' },
+  checkText: { fontSize: 30, color: 'white' },
   title: { color: '#fdf8f2', fontSize: 22, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
   subtitle: { color: 'rgba(232,201,154,0.5)', fontSize: 13, textAlign: 'center' },
+  doorBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(212,128,42,0.12)',
+    borderWidth: 1, borderColor: 'rgba(212,128,42,0.3)',
+    borderRadius: radius.lg,
+    paddingVertical: 14, paddingHorizontal: 40,
+    marginTop: 16, marginBottom: 6,
+  },
+  doorLabel: { color: colors.creamFaint, fontSize: 10, letterSpacing: 2, fontWeight: '700' },
+  doorNumber: { color: colors.accentLight, fontSize: 48, fontWeight: '800', lineHeight: 54 },
+  doorSub: { color: colors.creamMuted, fontSize: 12 },
   idBox: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: 10, paddingHorizontal: 24,
+    paddingVertical: 8, paddingHorizontal: 24,
     alignItems: 'center',
-    marginTop: 14,
     marginBottom: 14,
   },
   idLabel: { color: colors.creamFaint, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
-  idValue: { color: colors.accentLight, fontSize: 18, fontWeight: '700', letterSpacing: 3 },
-  lockerBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: 'rgba(212,128,42,0.10)',
-    borderWidth: 1, borderColor: 'rgba(212,128,42,0.25)',
-    borderRadius: radius.md,
-    paddingVertical: 14, paddingHorizontal: 20,
-    width: '100%',
-    marginBottom: 16,
-  },
-  lockerEmoji: { fontSize: 28 },
-  lockerName: { color: colors.text, fontSize: 14, fontWeight: '600' },
-  lockerHint: { color: colors.creamMuted, fontSize: 12 },
+  idValue: { color: colors.accentLight, fontSize: 16, fontWeight: '700', letterSpacing: 3 },
+  openError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: 'center' },
   stepRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     paddingVertical: 10,
@@ -178,5 +174,4 @@ const styles = StyleSheet.create({
   },
   stepDotText: { color: colors.accentLight, fontSize: 11, fontWeight: '700' },
   stepText: { color: colors.creamMuted, fontSize: 12, lineHeight: 18, flex: 1 },
-  confirmError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: 'center' },
 });
