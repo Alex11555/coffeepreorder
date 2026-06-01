@@ -9,20 +9,35 @@ export async function api(path, { method = 'GET', body, auth = true, headers = {
     const token = await getItem('authToken');
     if (token) finalHeaders.Authorization = `Bearer ${token}`;
   }
+  // On Android/Hermes, POST with Content-Type: application/json but no body
+  // can cause fetch() to throw a JSON parse error internally. Always send at
+  // least '{}' for non-GET requests to avoid this.
+  let finalBody = undefined;
+  if (body) {
+    finalBody = JSON.stringify(body);
+  } else if (method !== 'GET') {
+    finalBody = '{}';
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: finalHeaders,
-    body: body ? JSON.stringify(body) : undefined,
+    body: finalBody,
   });
 
   let data = null;
-  const text = await res.text();
-  if (text) {
+  let text = '';
+  try {
+    text = await res.text();
+  } catch {
+    // network cut mid-stream — treat as empty
+  }
+  if (text && text.trim().length > 0) {
     try { data = JSON.parse(text); } catch { data = text; }
   }
 
   if (!res.ok) {
-    const msg = (data && data.error) || `HTTP ${res.status}`;
+    const msg = (typeof data === 'object' && data && data.error) || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
     err.payload = data;

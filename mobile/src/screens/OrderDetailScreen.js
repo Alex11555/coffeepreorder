@@ -38,15 +38,18 @@ export default function OrderDetailScreen({ route, navigation }) {
     setOpenError('');
     try {
       setOpening(true);
+      console.log('[open] calling openDoor...');
       await openDoor(orderId);
-      await refresh();
+      console.log('[open] openDoor done, clearing active...');
       await clearActive();
+      console.log('[open] all done');
     } catch (e) {
+      console.log('[open] ERROR:', e.message, e);
       setOpenError(e.message || 'Could not open the door.');
     } finally {
       setOpening(false);
     }
-  }, [orderId, refresh, clearActive]);
+  }, [orderId, clearActive]);
 
   if (!order) {
     return (
