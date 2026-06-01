@@ -1,7 +1,30 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xattr /Users/alex/Desktop/projects/CoffeePreorderQR/server/prisma/migrations/)"
+      "Bash(xattr /Users/alex/Desktop/projects/CoffeePreorderQR/server/prisma/migrations/)",
+      "Bash(npm install *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({**d.get\\('dependencies',{}\\),**{}}, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; print\\('react-native', json.load\\(sys.stdin\\)['version']\\)\")",
+      "Bash(python3 -c \"import sys,json; print\\('expo', json.load\\(sys.stdin\\)['version']\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('expo SDK bundle expects react-native:', d.get\\('react-native'\\)\\); print\\('expo-secure-store:', d.get\\('expo-secure-store'\\)\\)\")",
+      "Bash(node -e \"const e=require\\('./node_modules/expo/package.json'\\); console.log\\('expo', e.version\\); const rn=require\\('./node_modules/react-native/package.json'\\); console.log\\('react-native', rn.version\\); const r=require\\('./node_modules/react/package.json'\\); console.log\\('react', r.version\\);\")",
+      "Bash(npx expo *)",
+      "Bash(node -e \"console.log\\('expo', require\\('./node_modules/expo/package.json'\\).version\\); console.log\\('react-native', require\\('./node_modules/react-native/package.json'\\).version\\); console.log\\('react', require\\('./node_modules/react/package.json'\\).version\\); console.log\\('buffer', require\\('./node_modules/buffer/package.json'\\).version\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"console.log\\('expo', require\\('./node_modules/expo/package.json'\\).version\\); console.log\\('linear-gradient', require\\('./node_modules/expo-linear-gradient/package.json'\\).version\\); console.log\\('buffer', require\\('./node_modules/buffer/package.json'\\).version\\);\")",
+      "Bash(watchman version *)",
+      "Bash(watchman watch-del *)",
+      "Bash(watchman shutdown-server *)",
+      "Bash(watchman watch *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/expo/package.json'\\).version\\)\")",
+      "Bash(npx prisma *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(npm run *)",
+      "Bash(curl -s -X POST https://coffeepreorder.onrender.com/api/auth/signin -H 'Content-Type: application/json' -d '{\"email\":\"barista@coffee.app\",\"password\":\"barista1234\"}')",
+      "Bash(curl -s \"https://coffeepreorder.onrender.com/api/lockers\" -o /tmp/lk.json)",
+      "Bash(python3 -c ' *)",
+      "Bash(node --check src/routes/orders.js)",
+      "Bash(curl -s -X POST https://coffeepreorder.onrender.com/api/auth/signin -H \"Content-Type: application/json\" -d '{\"email\":\"barista@coffee.app\",\"password\":\"barista1234\"}')"
     ]
   }
 }
