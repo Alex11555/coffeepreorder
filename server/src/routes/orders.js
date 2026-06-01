@@ -23,8 +23,12 @@ const { openSseStream } = require('../utils/sse');
 
 const router = express.Router();
 
+// Only compartments 1..4 are real solenoids. (Legacy lockers are OFFLINE.)
+const MAX_COMPARTMENT = 4;
+
 const CreateOrderBody = z.object({
-  lockerId: z.string().min(1),
+  // Optional now — server auto-assigns the first free compartment if omitted.
+  lockerId: z.string().min(1).optional(),
   items: z.array(z.object({
     productId: z.string().min(1),
     quantity: z.number().int().min(1).max(20),
@@ -41,15 +45,9 @@ router.post('/', requireAuth, async (req, res, next) => {
   if (!parsed.success) return next({ status: 400, message: 'Invalid order payload' });
   const { lockerId, items } = parsed.data;
 
-  const [locker, products] = await Promise.all([
-    prisma.locker.findUnique({ where: { id: lockerId } }),
-    prisma.product.findMany({ where: { id: { in: items.map((i) => i.productId) } } }),
-  ]);
-  if (!locker) return next({ status: 404, message: 'Locker not found' });
-  if (locker.status !== 'AVAILABLE') {
-    return next({ status: 409, message: 'Locker not available' });
-  }
-
+  const products = await prisma.product.findMany({
+    where: { id: { in: items.map((i) => i.productId) } },
+  });
   const productMap = new Map(products.map((p) => [p.id, p]));
   for (const i of items) {
     const p = productMap.get(i.productId);
@@ -67,37 +65,56 @@ router.post('/', requireAuth, async (req, res, next) => {
   const rawToken = generateRawToken();
   const tokenHash = hashToken(rawToken);
 
-  const order = await prisma.$transaction(async (tx) => {
-    const fresh = await tx.locker.findUnique({ where: { id: lockerId } });
-    if (!fresh || fresh.status !== 'AVAILABLE') {
-      throw Object.assign(new Error('Locker not available'), { status: 409 });
-    }
-    await tx.locker.update({ where: { id: lockerId }, data: { status: 'RESERVED' } });
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      // Pick the compartment: explicit lockerId if given + free, else the
+      // lowest-numbered AVAILABLE compartment (1..4).
+      let chosen;
+      if (lockerId) {
+        chosen = await tx.locker.findUnique({ where: { id: lockerId } });
+        if (!chosen || chosen.status !== 'AVAILABLE') {
+          throw Object.assign(new Error('That compartment is not available'), { status: 409 });
+        }
+      } else {
+        chosen = await tx.locker.findFirst({
+          where: { status: 'AVAILABLE', number: { lte: MAX_COMPARTMENT } },
+          orderBy: { number: 'asc' },
+        });
+        if (!chosen) {
+          throw Object.assign(new Error('All compartments are full right now — please try again shortly.'), { status: 409 });
+        }
+      }
 
-    return tx.order.create({
-      data: {
-        userId: req.user.id,
-        lockerId,
-        status: 'PAID',
-        totalCents,
-        items: {
-          create: items.map((i) => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            priceCents: productMap.get(i.productId).priceCents,
-            notes: i.notes ?? null,
-          })),
+      await tx.locker.update({ where: { id: chosen.id }, data: { status: 'RESERVED' } });
+
+      return tx.order.create({
+        data: {
+          userId: req.user.id,
+          lockerId: chosen.id,
+          status: 'PAID',
+          totalCents,
+          items: {
+            create: items.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              priceCents: productMap.get(i.productId).priceCents,
+              notes: i.notes ?? null,
+            })),
+          },
+          qrCode: { create: { tokenHash } },
         },
-        qrCode: { create: { tokenHash } },
-      },
-      include: {
-        items: { include: { product: true } },
-        locker: true,
-        qrCode: true,
-        user: { select: { id: true, name: true, email: true } },
-      },
+        include: {
+          items: { include: { product: true } },
+          locker: true,
+          qrCode: true,
+          user: { select: { id: true, name: true, email: true } },
+        },
+      });
     });
-  });
+  } catch (e) {
+    return next(e.status ? e : { status: 500, message: 'Could not place order' });
+  }
 
   const serialized = serializeOrder(order, { includeUser: true });
   publishOrderEvent('order.created', serialized);
@@ -257,9 +274,46 @@ router.patch('/:id/status', requireAuth, requireStaff, async (req, res, next) =>
   res.json(serializeOrder(updated));
 });
 
-// Customer (or staff) confirms they picked up the order from the locker.
-// This is a "soft pickup" path used by the mobile app's "I picked up my order"
-// button — the alternative to the Pi locker scanner POSTing to /api/pickup/scan.
+// Open the compartment door (button path). Owner or staff. Order must be READY.
+// Sets unlockPending=true so the Pi pops the solenoid, marks the order
+// PICKED_UP, frees the compartment, and burns the QR.
+router.post('/:id/open', requireAuth, async (req, res, next) => {
+  const order = await prisma.order.findUnique({
+    where: { id: req.params.id },
+    include: { qrCode: true, locker: true },
+  });
+  if (!order) return next({ status: 404, message: 'Order not found' });
+  if (order.userId !== req.user.id && req.user.role !== 'STAFF') {
+    return next({ status: 403, message: 'Not yours' });
+  }
+  if (order.status !== 'READY') {
+    return next({ status: 409, message: `Order not ready (status: ${order.status})` });
+  }
+
+  await prisma.$transaction([
+    prisma.locker.update({
+      where: { id: order.lockerId },
+      data: { status: 'AVAILABLE', unlockPending: true },
+    }),
+    prisma.order.update({ where: { id: order.id }, data: { status: 'PICKED_UP' } }),
+    ...(order.qrCode && !order.qrCode.usedAt
+      ? [prisma.qrCode.update({ where: { id: order.qrCode.id }, data: { usedAt: new Date() } })]
+      : []),
+  ]);
+
+  const updatedOpen = await prisma.order.findUnique({
+    where: { id: order.id },
+    include: {
+      items: { include: { product: true } },
+      locker: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+  publishOrderEvent('order.updated', serializeOrder(updatedOpen, { includeUser: true }));
+  res.json({ ...serializeOrder(updatedOpen), opening: { compartment: order.locker?.number } });
+});
+
+// Backwards-compatible: confirm pickup WITHOUT opening the door.
 // Only allowed when status === 'READY'. Marks the order PICKED_UP, frees the
 // locker, and burns the QR token so it can't be reused.
 router.post('/:id/picked-up', requireAuth, async (req, res, next) => {
