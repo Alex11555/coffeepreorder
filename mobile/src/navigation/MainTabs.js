@@ -1,13 +1,16 @@
-// Bottom tabs matching the design: Menu, Orders, My QR, Profile.
+// Bottom tabs: Menu, Cart, Orders, Rewards, Profile.
+// The Cart tab shows a badge with the number of items.
 import React from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import MenuScreen from '../screens/MenuScreen';
+import CartScreen from '../screens/CartScreen';
 import OrdersScreen from '../screens/OrdersScreen';
-import MyQRScreen from '../screens/MyQRScreen';
+import RewardsScreen from '../screens/RewardsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
+import { useCart } from '../context/CartContext';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -15,6 +18,28 @@ const Tab = createBottomTabNavigator();
 function tabIcon(emoji) {
   return ({ focused }) => (
     <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.35 }}>{emoji}</Text>
+  );
+}
+
+// Cart icon with an item-count badge.
+function CartIcon({ focused }) {
+  const { itemCount } = useCart();
+  return (
+    <View>
+      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.35 }}>🛒</Text>
+      {itemCount > 0 ? (
+        <View
+          style={{
+            position: 'absolute', top: -6, right: -10,
+            backgroundColor: colors.accent, borderRadius: 9,
+            minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: 4,
+          }}
+        >
+          <Text style={{ color: '#1a0a04', fontSize: 10, fontWeight: '800' }}>{itemCount}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -33,13 +58,14 @@ export default function MainTabs() {
           paddingBottom: 20,
           height: 70,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', letterSpacing: 0.5 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },
       }}
     >
-      <Tab.Screen name="Menu"     component={MenuScreen}    options={{ tabBarIcon: tabIcon('☕') }} />
-      <Tab.Screen name="Orders"   component={OrdersScreen}  options={{ tabBarIcon: tabIcon('📦') }} />
-      <Tab.Screen name="My QR"    component={MyQRScreen}    options={{ tabBarIcon: tabIcon('⬛') }} />
-      <Tab.Screen name="Profile"  component={ProfileScreen} options={{ tabBarIcon: tabIcon('👤') }} />
+      <Tab.Screen name="Menu"    component={MenuScreen}    options={{ tabBarIcon: tabIcon('☕') }} />
+      <Tab.Screen name="Cart"    component={CartScreen}    options={{ tabBarIcon: CartIcon }} />
+      <Tab.Screen name="Orders"  component={OrdersScreen}  options={{ tabBarIcon: tabIcon('📦') }} />
+      <Tab.Screen name="Rewards" component={RewardsScreen} options={{ tabBarIcon: tabIcon('🎁') }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: tabIcon('👤') }} />
     </Tab.Navigator>
   );
 }

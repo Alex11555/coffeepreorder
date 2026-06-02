@@ -8,3 +8,5 @@ export const signIn = (email, password) =>
   api('/api/auth/signin', { method: 'POST', body: { email, password }, auth: false });
 
 export const fetchMe = () => api('/api/auth/me');
+
+export const fetchLoyalty = () => api('/api/auth/loyalty');

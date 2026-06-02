@@ -6,6 +6,7 @@ const { z } = require('zod');
 const prisma = require('../prisma');
 const { signToken } = require('../utils/jwt');
 const { requireAuth } = require('../middleware/auth');
+const { loyaltySummary } = require('../utils/loyalty');
 
 const router = express.Router();
 
@@ -61,7 +62,20 @@ router.post('/signin', async (req, res, next) => {
 router.get('/me', requireAuth, async (req, res, next) => {
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
   if (!user) return next({ status: 404, message: 'User not found' });
-  res.json({ id: user.id, email: user.email, name: user.name, role: user.role });
+  res.json({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    loyalty: loyaltySummary(user),
+  });
+});
+
+// Standalone loyalty endpoint for the Rewards screen.
+router.get('/loyalty', requireAuth, async (req, res, next) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return next({ status: 404, message: 'User not found' });
+  res.json(loyaltySummary(user));
 });
 
 module.exports = router;

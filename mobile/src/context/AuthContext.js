@@ -27,18 +27,32 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
+  // Pull fresh user (incl. loyalty points/tier) from /me.
+  const refreshUser = useCallback(async () => {
+    try {
+      const me = await authApi.fetchMe();
+      setUser(me);
+      return me;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const signIn = useCallback(async (email, password) => {
-    const { token, user: u } = await authApi.signIn(email, password);
+    const { token } = await authApi.signIn(email, password);
     await setItem('authToken', token);
-    setUser(u);
-    return u;
+    // /me includes loyalty; signin response doesn't.
+    const me = await authApi.fetchMe();
+    setUser(me);
+    return me;
   }, []);
 
   const signUp = useCallback(async (email, password, name) => {
-    const { token, user: u } = await authApi.signUp(email, password, name);
+    const { token } = await authApi.signUp(email, password, name);
     await setItem('authToken', token);
-    setUser(u);
-    return u;
+    const me = await authApi.fetchMe();
+    setUser(me);
+    return me;
   }, []);
 
   const signOut = useCallback(async () => {
@@ -46,7 +60,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  const value = { user, loading, signIn, signUp, signOut };
+  const value = { user, loading, signIn, signUp, signOut, refreshUser };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

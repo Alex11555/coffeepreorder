@@ -20,6 +20,7 @@ const {
 const { generateRawToken, hashToken } = require('../utils/qr');
 const { publishOrderEvent, subscribe } = require('../utils/eventBus');
 const { openSseStream } = require('../utils/sse');
+const { tierForPoints, pointsForSpend, redeemToCents } = require('../utils/loyalty');
 
 const router = express.Router();
 
@@ -38,12 +39,14 @@ const CreateOrderBody = z.object({
   payment: z.object({
     method: z.enum(['mock_card', 'mock_apple_pay', 'mock_credits']),
   }),
+  // Optional: how many loyalty points the customer wants to redeem for a discount.
+  redeemPoints: z.number().int().min(0).optional(),
 });
 
 router.post('/', requireAuth, async (req, res, next) => {
   const parsed = CreateOrderBody.safeParse(req.body);
   if (!parsed.success) return next({ status: 400, message: 'Invalid order payload' });
-  const { lockerId, items } = parsed.data;
+  const { lockerId, items, redeemPoints } = parsed.data;
 
   const products = await prisma.product.findMany({
     where: { id: { in: items.map((i) => i.productId) } },
@@ -54,10 +57,30 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (!p || !p.available) return next({ status: 400, message: `Product unavailable: ${i.productId}` });
   }
 
-  const totalCents = items.reduce(
+  const subtotalCents = items.reduce(
     (sum, i) => sum + productMap.get(i.productId).priceCents * i.quantity,
     0
   );
+
+  // --- Loyalty pricing ---
+  const buyer = await prisma.user.findUnique({ where: { id: req.user.id } });
+  const tier = tierForPoints(buyer.lifetimePoints || 0);
+
+  // 1) Automatic tier discount (percentage off the subtotal).
+  const tierDiscountCents = Math.round(subtotalCents * (tier.discountPct / 100));
+  const afterTierCents = subtotalCents - tierDiscountCents;
+
+  // 2) Optional points redemption, capped to the remaining amount + balance.
+  const { discountCents: redeemDiscountCents, pointsUsed } = redeemToCents(
+    redeemPoints,
+    buyer.points || 0,
+    afterTierCents
+  );
+
+  const totalCents = Math.max(0, afterTierCents - redeemDiscountCents);
+
+  // 3) Points earned on the amount actually paid, boosted by tier multiplier.
+  const pointsEarned = pointsForSpend(totalCents, tier);
 
   const paymentOk = true;
   if (!paymentOk) return next({ status: 402, message: 'Payment declined' });
@@ -88,12 +111,24 @@ router.post('/', requireAuth, async (req, res, next) => {
 
       await tx.locker.update({ where: { id: chosen.id }, data: { status: 'RESERVED' } });
 
+      // Apply loyalty: subtract redeemed points, add earned points to both
+      // the spendable balance and the lifetime total (which drives the tier).
+      await tx.user.update({
+        where: { id: req.user.id },
+        data: {
+          points: { increment: pointsEarned - pointsUsed },
+          lifetimePoints: { increment: pointsEarned },
+        },
+      });
+
       return tx.order.create({
         data: {
           userId: req.user.id,
           lockerId: chosen.id,
           status: 'PAID',
           totalCents,
+          pointsEarned,
+          pointsRedeemed: pointsUsed,
           items: {
             create: items.map((i) => ({
               productId: i.productId,
@@ -119,9 +154,23 @@ router.post('/', requireAuth, async (req, res, next) => {
   const serialized = serializeOrder(order, { includeUser: true });
   publishOrderEvent('order.created', serialized);
 
+  // Reload the buyer so the client gets the fresh balance + tier.
+  const freshBuyer = await prisma.user.findUnique({ where: { id: req.user.id } });
+  const { loyaltySummary } = require('../utils/loyalty');
+
   res.status(201).json({
     order: serializeOrder(order),
     qrToken: rawToken,
+    pricing: {
+      subtotalCents,
+      tierDiscountCents,
+      tierDiscountPct: tier.discountPct,
+      redeemDiscountCents,
+      pointsRedeemed: pointsUsed,
+      totalCents,
+      pointsEarned,
+    },
+    loyalty: loyaltySummary(freshBuyer),
   });
 });
 
@@ -265,6 +314,16 @@ router.patch('/:id/status', requireAuth, requireStaff, async (req, res, next) =>
       await tx.locker.update({ where: { id: u.lockerId }, data: { status: 'OCCUPIED' } });
     } else if (next$ === 'CANCELLED') {
       await tx.locker.update({ where: { id: u.lockerId }, data: { status: 'AVAILABLE' } });
+      // Reverse loyalty: give back redeemed points, take back earned points.
+      if (order.pointsEarned || order.pointsRedeemed) {
+        await tx.user.update({
+          where: { id: order.userId },
+          data: {
+            points: { increment: order.pointsRedeemed - order.pointsEarned },
+            lifetimePoints: { decrement: order.pointsEarned },
+          },
+        });
+      }
     }
     return u;
   });
@@ -372,6 +431,8 @@ function serializeOrder(o, { includeUser = false } = {}) {
     id: o.id,
     status: o.status,
     totalCents: o.totalCents,
+    pointsEarned: o.pointsEarned ?? 0,
+    pointsRedeemed: o.pointsRedeemed ?? 0,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
     locker: o.locker

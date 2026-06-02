@@ -38,6 +38,10 @@ model User {
   googleId     String?  @unique
   avatarUrl    String?
   role         Role     @default(CUSTOMER)
+  // Loyalty: `points` is the spendable balance; `lifetimePoints` only ever
+  // grows and determines the membership tier (Bronze/Silver/Gold/Platinum).
+  points         Int    @default(0)
+  lifetimePoints Int    @default(0)
   createdAt    DateTime @default(now())
   orders       Order[]
 }
@@ -76,6 +80,9 @@ model Order {
   locker       Locker      @relation(fields: [lockerId], references: [id])
   status       OrderStatus @default(PAID)
   totalCents   Int
+  // Loyalty bookkeeping for this order (so cancellations can reverse cleanly).
+  pointsEarned   Int       @default(0)
+  pointsRedeemed Int       @default(0)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   items        OrderItem[]
