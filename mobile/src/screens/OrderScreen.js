@@ -1,7 +1,7 @@
 // Tap a drink → customize Size/Milk/Extras + quantity → add to cart.
 // The cart can hold several different drinks; checkout happens from CartScreen.
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
 
 import ScreenContainer from '../components/ScreenContainer';
 import Card from '../components/Card';
@@ -66,7 +66,11 @@ export default function OrderScreen({ route, navigation }) {
       </Pressable>
 
       <View style={styles.heroBlock}>
-        <Text style={styles.emoji}>{product.emoji || '☕'}</Text>
+        {product.imageUrl ? (
+          <Image source={{ uri: product.imageUrl }} style={styles.heroImage} />
+        ) : (
+          <Text style={styles.emoji}>{product.emoji || '☕'}</Text>
+        )}
         <Text style={styles.name}>{product.name}</Text>
         {product.description ? <Text style={styles.desc}>{product.description}</Text> : null}
       </View>
@@ -130,6 +134,7 @@ const styles = StyleSheet.create({
   backText: { color: 'rgba(232,201,154,0.7)', fontSize: 14 },
   heroBlock: { alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   emoji: { fontSize: 72 },
+  heroImage: { width: 160, height: 160, borderRadius: 80, resizeMode: 'cover', backgroundColor: colors.surfaceAlt },
   name: { color: '#fdf8f2', fontSize: 24, fontWeight: '700', marginTop: 8 },
   desc: { color: 'rgba(232,201,154,0.5)', fontSize: 13, marginTop: 4 },
   customizer: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg, borderRadius: radius.lg },

@@ -6,19 +6,22 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
+// Real product photos (Unsplash, ?w=400 keeps them light for mobile).
+const IMG = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=400&q=70`;
+
 const PRODUCTS = [
-  { name: 'Espresso',      description: 'Strong & bold shot.',                    priceCents: 350, emoji: '☕',  category: 'Espresso' },
-  { name: 'Americano',     description: 'Espresso topped with hot water.',        priceCents: 380, emoji: '🍶', category: 'Espresso' },
-  { name: 'Cappuccino',    description: 'Classic Italian style.',                 priceCents: 450, emoji: '🫗',  category: 'Lattes'   },
-  { name: 'Flat White',    description: 'Silky microfoam.',                       priceCents: 480, emoji: '☁️',  category: 'Lattes'   },
-  { name: 'Latte',         description: 'Espresso with steamed milk.',            priceCents: 470, emoji: '🥛', category: 'Lattes'   },
-  { name: 'Cortado',       description: 'Balanced & smooth.',                     priceCents: 400, emoji: '⚖️',  category: 'Espresso' },
-  { name: 'Mocha',         description: 'Espresso, chocolate, steamed milk.',     priceCents: 520, emoji: '🍫', category: 'Lattes'   },
-  { name: 'Cold Brew',     description: '12-hour steeped.',                       priceCents: 500, emoji: '🧊', category: 'Cold Brew' },
-  { name: 'Iced Latte',    description: 'Espresso over ice with cold milk.',      priceCents: 470, emoji: '🥤', category: 'Cold Brew' },
-  { name: 'Matcha Latte',  description: 'Ceremonial grade.',                      priceCents: 550, emoji: '🍵', category: 'Tea'      },
-  { name: 'Hot Chocolate', description: 'Belgian dark chocolate, no coffee.',     priceCents: 425, emoji: '🍫', category: 'Tea'      },
-  { name: 'Chai Latte',    description: 'Spiced black tea + milk.',               priceCents: 475, emoji: '🫖', category: 'Tea'      },
+  { name: 'Espresso',      description: 'Strong & bold shot.',                    priceCents: 350, emoji: '☕',  category: 'Espresso',  imageUrl: IMG('photo-1510707577719-ae7c14805e3a') },
+  { name: 'Americano',     description: 'Espresso topped with hot water.',        priceCents: 380, emoji: '🍶', category: 'Espresso',  imageUrl: IMG('photo-1551030173-122aabc4489c') },
+  { name: 'Cappuccino',    description: 'Classic Italian style.',                 priceCents: 450, emoji: '🫗',  category: 'Lattes',    imageUrl: IMG('photo-1572442388796-11668a67e53d') },
+  { name: 'Flat White',    description: 'Silky microfoam.',                       priceCents: 480, emoji: '☁️',  category: 'Lattes',    imageUrl: IMG('photo-1517256064527-09c73fc73e38') },
+  { name: 'Latte',         description: 'Espresso with steamed milk.',            priceCents: 470, emoji: '🥛', category: 'Lattes',    imageUrl: IMG('photo-1561882468-9110e03e0f78') },
+  { name: 'Cortado',       description: 'Balanced & smooth.',                     priceCents: 400, emoji: '⚖️',  category: 'Espresso',  imageUrl: IMG('photo-1495774856032-8b90bbb32b32') },
+  { name: 'Mocha',         description: 'Espresso, chocolate, steamed milk.',     priceCents: 520, emoji: '🍫', category: 'Lattes',    imageUrl: IMG('photo-1578374173705-969cbe6f2d6b') },
+  { name: 'Cold Brew',     description: '12-hour steeped.',                       priceCents: 500, emoji: '🧊', category: 'Cold Brew', imageUrl: IMG('photo-1461023058943-07fcbe16d735') },
+  { name: 'Iced Latte',    description: 'Espresso over ice with cold milk.',      priceCents: 470, emoji: '🥤', category: 'Cold Brew', imageUrl: IMG('photo-1517701604599-bb29b565090c') },
+  { name: 'Matcha Latte',  description: 'Ceremonial grade.',                      priceCents: 550, emoji: '🍵', category: 'Tea',       imageUrl: IMG('photo-1515823662972-da6a2e4d3002') },
+  { name: 'Hot Chocolate', description: 'Belgian dark chocolate, no coffee.',     priceCents: 425, emoji: '🍫', category: 'Tea',       imageUrl: IMG('photo-1542990253-0d0f5be5f0ed') },
+  { name: 'Chai Latte',    description: 'Spiced black tea + milk.',               priceCents: 475, emoji: '🫖', category: 'Tea',       imageUrl: IMG('photo-1597481499750-3e6b22637e12') },
 ];
 
 // ONE physical cabinet, FOUR compartments. Each `number` maps to a GPIO pin
@@ -33,7 +36,7 @@ async function main() {
     if (existing) {
       await prisma.product.update({
         where: { id: existing.id },
-        data: { description: p.description, priceCents: p.priceCents, emoji: p.emoji, category: p.category },
+        data: { description: p.description, priceCents: p.priceCents, emoji: p.emoji, category: p.category, imageUrl: p.imageUrl },
       });
     } else {
       await prisma.product.create({ data: p });

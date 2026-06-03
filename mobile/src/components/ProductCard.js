@@ -1,24 +1,36 @@
-// Tile in the menu grid — large emoji on a tinted top half, info + add CTA below.
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+// Tile in the menu grid — real product photo on top (emoji fallback),
+// info + add CTA below.
+import React, { useState } from 'react';
+import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatPrice } from '../utils/format';
 
 export default function ProductCard({ product, onPress }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = product.imageUrl && !imgFailed;
+
   return (
     <Pressable
       onPress={() => onPress?.(product)}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
     >
-      <LinearGradient
-        colors={[colors.surfaceAlt, '#3a1a0a']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.imageWrap}
-      >
-        <Text style={styles.emoji}>{product.emoji || '☕'}</Text>
-      </LinearGradient>
+      {showImage ? (
+        <Image
+          source={{ uri: product.imageUrl }}
+          style={styles.image}
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <LinearGradient
+          colors={[colors.surfaceAlt, '#3a1a0a']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.imageWrap}
+        >
+          <Text style={styles.emoji}>{product.emoji || '☕'}</Text>
+        </LinearGradient>
+      )}
       <View style={styles.body}>
         <Text style={styles.name}>{product.name}</Text>
         {product.description ? (
@@ -49,6 +61,12 @@ const styles = StyleSheet.create({
     height: 110,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  image: {
+    height: 110,
+    width: '100%',
+    resizeMode: 'cover',
+    backgroundColor: colors.surfaceAlt,
   },
   emoji: { fontSize: 52 },
   body: { padding: spacing.md },
