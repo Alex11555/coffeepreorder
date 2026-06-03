@@ -25,7 +25,7 @@ const NavTheme = {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ backgroundColor: colors.bg }}>
       <AuthProvider>
         <CartProvider>
           <NavigationContainer theme={NavTheme}>

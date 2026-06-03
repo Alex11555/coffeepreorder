@@ -22,6 +22,12 @@ export default function RootNavigator() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#1a0a04' },
+        // Smooth slide both ways; the explicit dark background + slide
+        // animation kills the white flash Android shows on the default anim.
+        animation: 'slide_from_right',
+        animationDuration: 250,
+        // Keep the area behind the transition dark, not white.
+        navigationBarColor: '#1a0a04',
       }}
     >
       {!user ? (
