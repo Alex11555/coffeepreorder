@@ -14,9 +14,20 @@ import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
 
+// Fixed-size, centered icon box so the emoji glyph never gets clipped.
+const ICON_BOX = { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' };
+const emojiStyle = (focused) => ({
+  fontSize: 22,
+  lineHeight: 28, // explicit line height prevents top-clipping on Android
+  opacity: focused ? 1 : 0.4,
+  textAlign: 'center',
+});
+
 function tabIcon(emoji) {
   return ({ focused }) => (
-    <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.4 }}>{emoji}</Text>
+    <View style={ICON_BOX}>
+      <Text style={emojiStyle(focused)}>{emoji}</Text>
+    </View>
   );
 }
 
@@ -24,18 +35,19 @@ function tabIcon(emoji) {
 function CartIcon({ focused }) {
   const { itemCount } = useCart();
   return (
-    <View>
-      <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.4 }}>🛒</Text>
+    <View style={ICON_BOX}>
+      <Text style={emojiStyle(focused)}>🛒</Text>
       {itemCount > 0 ? (
         <View
           style={{
-            position: 'absolute', top: -6, right: -12,
+            position: 'absolute', top: 0, right: -2,
             backgroundColor: colors.accent, borderRadius: 9,
             minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
             paddingHorizontal: 4,
+            borderWidth: 2, borderColor: '#1a0a04',
           }}
         >
-          <Text style={{ color: '#1a0a04', fontSize: 10, fontWeight: '800' }}>{itemCount}</Text>
+          <Text style={{ color: '#1a0a04', fontSize: 9, fontWeight: '800' }}>{itemCount}</Text>
         </View>
       ) : null}
     </View>
@@ -53,12 +65,12 @@ export default function MainTabs() {
           backgroundColor: 'rgba(26,10,4,0.98)',
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          paddingTop: 12,
-          paddingBottom: 24,
-          height: 78,
+          paddingTop: 10,
+          paddingBottom: 28,
+          height: 84,
         },
-        tabBarItemStyle: { paddingTop: 2 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, marginTop: 4 },
+        tabBarIconStyle: { marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, marginTop: 2 },
       }}
     >
       <Tab.Screen name="Menu"    component={MenuScreen}    options={{ tabBarIcon: tabIcon('☕') }} />
