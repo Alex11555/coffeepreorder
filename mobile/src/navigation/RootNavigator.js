@@ -28,6 +28,13 @@ export default function RootNavigator() {
         animationDuration: 250,
         // Keep the area behind the transition dark, not white.
         navigationBarColor: '#1a0a04',
+        // CRITICAL on Android: screens 4.x freezes the blurred screen by
+        // default, which makes the screen underneath render BLANK during the
+        // back transition. Disable it so both screens stay painted while the
+        // slide animates.
+        freezeOnBlur: false,
+        // Don't unmount the previous screen mid-animation.
+        detachPreviousScreen: false,
       }}
     >
       {!user ? (
