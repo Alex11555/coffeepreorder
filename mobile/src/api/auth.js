@@ -10,3 +10,7 @@ export const signIn = (email, password) =>
 export const fetchMe = () => api('/api/auth/me');
 
 export const fetchLoyalty = () => api('/api/auth/loyalty');
+
+// Register (or clear) this device's Expo push token on the server.
+export const registerPushToken = (pushToken) =>
+  api('/api/auth/push-token', { method: 'POST', body: { pushToken } });

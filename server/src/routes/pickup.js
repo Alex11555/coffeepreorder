@@ -18,6 +18,7 @@ const { z } = require('zod');
 const prisma = require('../prisma');
 const { hashToken } = require('../utils/qr');
 const { publishOrderEvent } = require('../utils/eventBus');
+const { notifyOrderStatus } = require('../utils/push');
 
 const router = express.Router();
 
@@ -61,6 +62,7 @@ router.post('/scan', async (req, res, next) => {
     },
   });
   publishOrderEvent('order.updated', serializeOrder(updated));
+  notifyOrderStatus(updated); // "Enjoy your coffee" push
 
   res.json({
     ok: true,

@@ -78,4 +78,17 @@ router.get('/loyalty', requireAuth, async (req, res, next) => {
   res.json(loyaltySummary(user));
 });
 
+// Register (or clear) this device's Expo push token. The app calls this
+// after login once it has permission + a token.
+const PushBody = z.object({ pushToken: z.string().max(255).nullable() });
+router.post('/push-token', requireAuth, async (req, res, next) => {
+  const parsed = PushBody.safeParse(req.body);
+  if (!parsed.success) return next({ status: 400, message: 'Invalid push token' });
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: { pushToken: parsed.data.pushToken },
+  });
+  res.json({ ok: true });
+});
+
 module.exports = router;

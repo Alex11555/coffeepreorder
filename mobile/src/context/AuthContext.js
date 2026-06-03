@@ -2,8 +2,20 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { setItem, getItem, deleteItem } from '../utils/storage';
 import * as authApi from '../api/auth';
+import { registerForPush } from '../utils/push';
 
 const AuthContext = createContext(null);
+
+// Ask for permission, get the Expo token, and send it to the server.
+// Best-effort — never blocks login if it fails (e.g. Expo Go / no permission).
+async function syncPushToken() {
+  try {
+    const token = await registerForPush();
+    if (token) await authApi.registerPushToken(token);
+  } catch {
+    // ignore
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -17,6 +29,7 @@ export function AuthProvider({ children }) {
         if (token) {
           const me = await authApi.fetchMe();
           setUser(me);
+          syncPushToken();
         }
       } catch {
         // token expired / invalid — clear it
@@ -44,6 +57,7 @@ export function AuthProvider({ children }) {
     // /me includes loyalty; signin response doesn't.
     const me = await authApi.fetchMe();
     setUser(me);
+    syncPushToken();
     return me;
   }, []);
 
@@ -52,10 +66,13 @@ export function AuthProvider({ children }) {
     await setItem('authToken', token);
     const me = await authApi.fetchMe();
     setUser(me);
+    syncPushToken();
     return me;
   }, []);
 
   const signOut = useCallback(async () => {
+    // Clear the token server-side so a signed-out device stops getting pushes.
+    try { await authApi.registerPushToken(null); } catch {}
     await deleteItem('authToken');
     setUser(null);
   }, []);

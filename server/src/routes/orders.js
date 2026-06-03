@@ -21,6 +21,7 @@ const { generateRawToken, hashToken } = require('../utils/qr');
 const { publishOrderEvent, subscribe } = require('../utils/eventBus');
 const { openSseStream } = require('../utils/sse');
 const { tierForPoints, pointsForSpend, redeemToCents } = require('../utils/loyalty');
+const { notifyOrderStatus } = require('../utils/push');
 
 const router = express.Router();
 
@@ -330,6 +331,8 @@ router.patch('/:id/status', requireAuth, requireStaff, async (req, res, next) =>
 
   const serialized = serializeOrder(updated, { includeUser: true });
   publishOrderEvent('order.updated', serialized);
+  // Push the customer (`updated` has userId + locker). Fire-and-forget.
+  notifyOrderStatus(updated);
   res.json(serializeOrder(updated));
 });
 

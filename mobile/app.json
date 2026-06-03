@@ -32,7 +32,13 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-notifications",
+        {
+          "color": "#d4802a"
+        }
+      ]
     ]
   }
 }

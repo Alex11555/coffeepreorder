@@ -42,6 +42,8 @@ model User {
   // grows and determines the membership tier (Bronze/Silver/Gold/Platinum).
   points         Int    @default(0)
   lifetimePoints Int    @default(0)
+  // Expo push token for this user's device (set on login from the app).
+  pushToken    String?
   createdAt    DateTime @default(now())
   orders       Order[]
 }
