@@ -6,7 +6,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import MenuScreen from '../screens/MenuScreen';
 import CartScreen from '../screens/CartScreen';
-import OrdersScreen from '../screens/OrdersScreen';
 import RewardsScreen from '../screens/RewardsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -17,7 +16,7 @@ const Tab = createBottomTabNavigator();
 
 function tabIcon(emoji) {
   return ({ focused }) => (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.35 }}>{emoji}</Text>
+    <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.4 }}>{emoji}</Text>
   );
 }
 
@@ -26,11 +25,11 @@ function CartIcon({ focused }) {
   const { itemCount } = useCart();
   return (
     <View>
-      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.35 }}>🛒</Text>
+      <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.4 }}>🛒</Text>
       {itemCount > 0 ? (
         <View
           style={{
-            position: 'absolute', top: -6, right: -10,
+            position: 'absolute', top: -6, right: -12,
             backgroundColor: colors.accent, borderRadius: 9,
             minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center',
             paddingHorizontal: 4,
@@ -51,19 +50,19 @@ export default function MainTabs() {
         tabBarActiveTintColor: colors.accentLight,
         tabBarInactiveTintColor: 'rgba(232,201,154,0.4)',
         tabBarStyle: {
-          backgroundColor: 'rgba(26,10,4,0.97)',
+          backgroundColor: 'rgba(26,10,4,0.98)',
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          paddingTop: 10,
-          paddingBottom: 20,
-          height: 70,
+          paddingTop: 12,
+          paddingBottom: 24,
+          height: 78,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', letterSpacing: 0.3 },
+        tabBarItemStyle: { paddingTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, marginTop: 4 },
       }}
     >
       <Tab.Screen name="Menu"    component={MenuScreen}    options={{ tabBarIcon: tabIcon('☕') }} />
       <Tab.Screen name="Cart"    component={CartScreen}    options={{ tabBarIcon: CartIcon }} />
-      <Tab.Screen name="Orders"  component={OrdersScreen}  options={{ tabBarIcon: tabIcon('📦') }} />
       <Tab.Screen name="Rewards" component={RewardsScreen} options={{ tabBarIcon: tabIcon('🎁') }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: tabIcon('👤') }} />
     </Tab.Navigator>
