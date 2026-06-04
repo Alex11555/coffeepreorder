@@ -22,19 +22,18 @@ export default function RootNavigator() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#1a0a04' },
-        // Smooth slide both ways; the explicit dark background + slide
-        // animation kills the white flash Android shows on the default anim.
-        animation: 'slide_from_right',
-        animationDuration: 250,
-        // Keep the area behind the transition dark, not white.
+        // iOS-style push/pop: the leaving screen slides off to the right
+        // while the one underneath parallaxes in. Smoothest on both platforms
+        // and — unlike slide_from_right on Android — the leaving screen stays
+        // fully painted instead of vanishing.
+        animation: 'ios_from_right',
+        animationDuration: 300,
         navigationBarColor: '#1a0a04',
-        // CRITICAL on Android: screens 4.x freezes the blurred screen by
-        // default, which makes the screen underneath render BLANK during the
-        // back transition. Disable it so both screens stay painted while the
-        // slide animates.
+        // Keep the screen underneath painted (screens 4.x freezes it by
+        // default, which made the menu render blank during the transition).
         freezeOnBlur: false,
-        // Don't unmount the previous screen mid-animation.
-        detachPreviousScreen: false,
+        // Allow swipe-back gesture too.
+        gestureEnabled: true,
       }}
     >
       {!user ? (
