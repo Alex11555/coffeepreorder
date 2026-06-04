@@ -3,8 +3,13 @@
 // swipe-back gesture to work.
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef } from 'react';
+import { LogBox } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Suppress a noisy warning from @react-navigation/stack internals
+// (it still uses the deprecated InteractionManager). Not our code; harmless.
+LogBox.ignoreLogs(['InteractionManager has been deprecated']);
 import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 
 import { AuthProvider } from './src/context/AuthContext';
