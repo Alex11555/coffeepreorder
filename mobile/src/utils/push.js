@@ -1,34 +1,50 @@
 // Push notification setup for the customer app.
 //
-// Flow:
-//   1. registerForPush() asks permission + gets the Expo push token
-//   2. AuthContext POSTs that token to the server after login
-//   3. server sends pushes on status changes (preparing/ready/picked up)
-//
-// Note: push notifications do NOT work in Expo Go on Android (SDK 53+);
-// they require a dev build or production build. iOS Expo Go also needs a
-// dev build for remote push. The code degrades gracefully (returns null).
+// IMPORTANT: remote push was removed from Expo Go in SDK 53. Touching the
+// expo-notifications push APIs there throws. So we detect Expo Go and make
+// EVERYTHING a no-op — the app runs fine, just without push. In a real dev
+// or production build, push works normally.
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
-// Show alerts even when the app is foregrounded.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// 'expo' => running inside Expo Go. Anything else (standalone / dev build) is fine.
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Lazy-require so the native module isn't even loaded in Expo Go.
+function getNotifications() {
+  // eslint-disable-next-line global-require
+  return require('expo-notifications');
+}
+function getDevice() {
+  // eslint-disable-next-line global-require
+  return require('expo-device');
+}
+
+let handlerSet = false;
+function ensureHandler() {
+  if (handlerSet || isExpoGo) return;
+  const Notifications = getNotifications();
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+  handlerSet = true;
+}
 
 export async function registerForPush() {
-  // Only real devices can get a push token.
-  if (!Device.isDevice) return null;
+  if (isExpoGo) return null; // push not available in Expo Go
 
   try {
-    // Android needs a notification channel.
+    const Notifications = getNotifications();
+    const Device = getDevice();
+    if (!Device.isDevice) return null;
+
+    ensureHandler();
+
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Order updates',
@@ -53,19 +69,25 @@ export async function registerForPush() {
     const tokenData = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
-    return tokenData.data; // ExponentPushToken[...]
+    return tokenData.data;
   } catch (e) {
     console.warn('[push] registration failed:', e?.message);
     return null;
   }
 }
 
-// Subscribe to taps on a notification. `onTap(data)` gets the data payload
-// (e.g. { orderId, status }). Returns an unsubscribe function.
+// Subscribe to taps on a notification. No-op in Expo Go.
 export function addNotificationTapListener(onTap) {
-  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-    const data = response?.notification?.request?.content?.data;
-    if (data) onTap(data);
-  });
-  return () => sub.remove();
+  if (isExpoGo) return () => {};
+  try {
+    const Notifications = getNotifications();
+    ensureHandler();
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response?.notification?.request?.content?.data;
+      if (data) onTap(data);
+    });
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
 }
