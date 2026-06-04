@@ -1,6 +1,11 @@
 // Top-level navigator — Auth stack vs Main tabs.
+//
+// We use the JS stack (@react-navigation/stack) instead of native-stack for
+// the modal/detail screens, because native-stack on Android has a bug where
+// the LEAVING screen blanks instantly on back instead of sliding off. The JS
+// stack animates both screens smoothly (Reanimated-driven), exactly like iOS.
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator, CardStyleInterpolators, TransitionSpecs } from '@react-navigation/stack';
 
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
@@ -12,7 +17,7 @@ import PaymentScreen from '../screens/PaymentScreen';
 import QRCodeScreen from '../screens/QRCodeScreen';
 import OrderDetailScreen from '../screens/OrderDetailScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 
 export default function RootNavigator() {
   const { user, loading } = useAuth();
@@ -21,19 +26,16 @@ export default function RootNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#1a0a04' },
-        // iOS-style push/pop: the leaving screen slides off to the right
-        // while the one underneath parallaxes in. Smoothest on both platforms
-        // and — unlike slide_from_right on Android — the leaving screen stays
-        // fully painted instead of vanishing.
-        animation: 'ios_from_right',
-        animationDuration: 300,
-        navigationBarColor: '#1a0a04',
-        // Keep the screen underneath painted (screens 4.x freezes it by
-        // default, which made the menu render blank during the transition).
-        freezeOnBlur: false,
-        // Allow swipe-back gesture too.
+        cardStyle: { backgroundColor: '#1a0a04' },
+        // iOS-style horizontal slide — both screens move together (the one
+        // underneath parallaxes in), so nothing ever blanks on Android.
+        cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         gestureEnabled: true,
+        gestureDirection: 'horizontal',
+        transitionSpec: {
+          open: TransitionSpecs.TransitionIOSSpec,
+          close: TransitionSpecs.TransitionIOSSpec,
+        },
       }}
     >
       {!user ? (

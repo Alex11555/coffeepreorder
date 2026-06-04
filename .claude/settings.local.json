@@ -24,7 +24,30 @@
       "Bash(curl -s \"https://coffeepreorder.onrender.com/api/lockers\" -o /tmp/lk.json)",
       "Bash(python3 -c ' *)",
       "Bash(node --check src/routes/orders.js)",
-      "Bash(curl -s -X POST https://coffeepreorder.onrender.com/api/auth/signin -H \"Content-Type: application/json\" -d '{\"email\":\"barista@coffee.app\",\"password\":\"barista1234\"}')"
+      "Bash(curl -s -X POST https://coffeepreorder.onrender.com/api/auth/signin -H \"Content-Type: application/json\" -d '{\"email\":\"barista@coffee.app\",\"password\":\"barista1234\"}')",
+      "Bash(node --check src/routes/auth.js)",
+      "Bash(node --check src/utils/loyalty.js)",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/signin -H \"Content-Type: application/json\" -d '{\"email\":\"barista@coffee.app\",\"password\":\"barista1234\"}')",
+      "Bash(node --check src/utils/useWeather.js)",
+      "Bash(node --check src/components/Greeting.js)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/react-native-screens/package.json'\\).version\\)\")",
+      "Bash(grep -rn \"enableScreens\" src/ App.js index.js)",
+      "Bash(node --check src/navigation/RootNavigator.js)",
+      "Bash(node --check mobile/src/navigation/MainTabs.js)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix clipped tab bar icons: centered icon box + explicit lineHeight *)",
+      "Bash(git push *)",
+      "Bash(node --check src/utils/push.js)",
+      "Bash(node --check src/routes/pickup.js)",
+      "Bash(node -e \"console.log\\('expo-notifications', require\\('./node_modules/expo-notifications/package.json'\\).version\\); console.log\\('expo-device', require\\('./node_modules/expo-device/package.json'\\).version\\)\")",
+      "Bash(node --check mobile/src/utils/push.js)",
+      "Bash(git commit -m 'fix Expo Go crash: make push fully no-op when running in Expo Go *)",
+      "Read(//Users/alex/Desktop/**)",
+      "Bash(which ffmpeg *)",
+      "Bash(node -e \"console.log\\('react-native-screens', require\\('./node_modules/react-native-screens/package.json'\\).version\\)\")",
+      "Bash(node -e \"const d=require\\('./package.json'\\).dependencies; Object.keys\\(d\\).filter\\(k=>k.includes\\('navigation'\\)||k.includes\\('gesture'\\)||k.includes\\('reanimated'\\)||k.includes\\('screens'\\)\\).forEach\\(k=>console.log\\(k, d[k]\\)\\)\")",
+      "Bash(node --check App.js)",
+      "Bash(node -e \"const s=require\\('@react-navigation/stack'\\); console.log\\('createStackNavigator:', typeof s.createStackNavigator\\); console.log\\('CardStyleInterpolators:', typeof s.CardStyleInterpolators\\); console.log\\('TransitionSpecs:', typeof s.TransitionSpecs\\); console.log\\('forHorizontalIOS:', typeof s.CardStyleInterpolators.forHorizontalIOS\\)\")"
     ]
   }
 }

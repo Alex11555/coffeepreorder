@@ -1,4 +1,7 @@
 // Root component — wraps the app in providers and sets the dark nav theme.
+// NOTE: gesture-handler must be the very first import for the JS stack's
+// swipe-back gesture to work.
+import 'react-native-gesture-handler';
 import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
