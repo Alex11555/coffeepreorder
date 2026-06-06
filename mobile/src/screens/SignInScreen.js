@@ -81,7 +81,7 @@ export default function SignInScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, justifyContent: 'center' },
+  content: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
   brand: { alignItems: 'center', marginBottom: spacing.lg },
   logo: { fontSize: 56 },
   brandName: { fontSize: 28, fontWeight: '800', color: '#fdf8f2', letterSpacing: 1, marginTop: 4 },

@@ -35,13 +35,11 @@ export default function ScreenContainer({
     <View style={[styles.content, { flex: 1 }, contentStyle]}>{children}</View>
   );
 
-  // On both platforms KeyboardAvoidingView shrinks the visible area so the
-  // ScrollView can scroll the focused input + button above the keyboard.
+  // KeyboardAvoidingView with 'padding' on both platforms pushes the
+  // ScrollView up by the keyboard height, and the ScrollView's bottom padding
+  // gives room to scroll the button/footer fully into view.
   const wrapped = keyboard ? (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {inner}
     </KeyboardAvoidingView>
   ) : (
@@ -58,6 +56,7 @@ export default function ScreenContainer({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: spacing.xxl },
-  // Let the auth screens center/grow and scroll cleanly when the keyboard opens.
-  contentGrow: { flexGrow: 1, paddingBottom: spacing.xl },
+  // Auth screens: top-aligned with generous bottom room so the button/footer
+  // can always be scrolled clear of the keyboard.
+  contentGrow: { flexGrow: 1, paddingBottom: 120 },
 });
