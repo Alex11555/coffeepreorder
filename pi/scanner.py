@@ -73,16 +73,13 @@ def main():
     )
     picam2.configure(config)
 
-    # Native, hardware-accelerated preview window (reliable on the Pi desktop).
+    # Native preview window. Use the software QT preview (not QTGL) — QTGL
+    # rejects the RGB888 format we capture in. QT is slower but plenty for QR.
     if PREVIEW:
         try:
-            picam2.start_preview(Preview.QTGL)
-        except Exception:
-            # QTGL needs GPU/GL; fall back to the plain Qt preview.
-            try:
-                picam2.start_preview(Preview.QT)
-            except Exception as e:
-                print(f"(preview unavailable: {e})")
+            picam2.start_preview(Preview.QT)
+        except Exception as e:
+            print(f"(preview unavailable: {e})")
 
     picam2.start()
 
