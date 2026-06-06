@@ -15,8 +15,9 @@ export default function ScreenContainer({
 }) {
   const inner = scroll ? (
     <ScrollView
-      contentContainerStyle={[styles.content, contentStyle]}
+      contentContainerStyle={[styles.content, keyboard && styles.contentGrow, contentStyle]}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (
@@ -34,10 +35,12 @@ export default function ScreenContainer({
     <View style={[styles.content, { flex: 1 }, contentStyle]}>{children}</View>
   );
 
+  // On both platforms KeyboardAvoidingView shrinks the visible area so the
+  // ScrollView can scroll the focused input + button above the keyboard.
   const wrapped = keyboard ? (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {inner}
     </KeyboardAvoidingView>
@@ -55,4 +58,6 @@ export default function ScreenContainer({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: spacing.xxl },
+  // Let the auth screens center/grow and scroll cleanly when the keyboard opens.
+  contentGrow: { flexGrow: 1, paddingBottom: spacing.xl },
 });
