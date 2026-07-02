@@ -6,3 +6,4 @@ web-build/
 .env
 *.log
 .DS_Store
+.watchman-cookie-*
