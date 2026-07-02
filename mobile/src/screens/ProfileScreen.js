@@ -10,6 +10,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import OrderListItem from '../components/OrderListItem';
 import OrderStatusBadge from '../components/OrderStatusBadge';
+import { FadeInView, PressScale } from '../components/anim';
 
 import { fetchOrders } from '../api/orders';
 import { useAuth } from '../context/AuthContext';
@@ -58,30 +59,34 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScreenContainer refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }}>
       {/* Account header */}
-      <View style={styles.headerRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initial}</Text>
+      <FadeInView>
+        <View style={styles.headerRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name}>{user?.name || 'Coffee lover'}</Text>
+            <Text style={styles.email}>{user?.email}</Text>
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{user?.name || 'Coffee lover'}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-        </View>
-      </View>
+      </FadeInView>
 
       {/* Loyalty snapshot — tappable, goes to Rewards */}
       {loyalty ? (
-        <Pressable onPress={() => navigation.navigate('Rewards')}>
-          <Card style={[styles.card, styles.loyaltyCard]}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.loyaltyTier}>{loyalty.tier?.emoji} {loyalty.tier?.name} member</Text>
-              <Text style={styles.loyaltySub}>{loyalty.lifetimePoints} lifetime · tap for rewards →</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.loyaltyBalance}>{loyalty.points}</Text>
-              <Text style={styles.loyaltySub}>points</Text>
-            </View>
-          </Card>
-        </Pressable>
+        <FadeInView delay={70}>
+          <PressScale onPress={() => navigation.navigate('Rewards')} to={0.97}>
+            <Card style={[styles.card, styles.loyaltyCard]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.loyaltyTier}>{loyalty.tier?.emoji} {loyalty.tier?.name} member</Text>
+                <Text style={styles.loyaltySub}>{loyalty.lifetimePoints} lifetime · tap for rewards →</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.loyaltyBalance}>{loyalty.points}</Text>
+                <Text style={styles.loyaltySub}>points</Text>
+              </View>
+            </Card>
+          </PressScale>
+        </FadeInView>
       ) : null}
 
       {/* Active order */}

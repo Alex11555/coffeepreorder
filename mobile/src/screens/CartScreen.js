@@ -9,6 +9,7 @@ import Button from '../components/Button';
 import QuantityStepper from '../components/QuantityStepper';
 import EmptyState from '../components/EmptyState';
 
+import { FadeInView } from '../components/anim';
 import { useCart } from '../context/CartContext';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatPrice } from '../utils/format';
@@ -39,23 +40,25 @@ export default function CartScreen({ navigation }) {
       </View>
 
       <View style={{ paddingHorizontal: spacing.lg }}>
-        {items.map((it) => (
-          <Card key={it.lineId} style={styles.lineCard}>
-            <View style={styles.lineTop}>
-              <Text style={styles.lineEmoji}>{it.product.emoji || '☕'}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.lineName}>{it.product.name}</Text>
-                <Text style={styles.lineNotes}>{it.notes}</Text>
+        {items.map((it, i) => (
+          <FadeInView key={it.lineId} delay={i * 70}>
+            <Card style={styles.lineCard}>
+              <View style={styles.lineTop}>
+                <Text style={styles.lineEmoji}>{it.product.emoji || '☕'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lineName}>{it.product.name}</Text>
+                  <Text style={styles.lineNotes}>{it.notes}</Text>
+                </View>
+                <Pressable onPress={() => removeItem(it.lineId)} hitSlop={10}>
+                  <Text style={styles.remove}>✕</Text>
+                </Pressable>
               </View>
-              <Pressable onPress={() => removeItem(it.lineId)} hitSlop={10}>
-                <Text style={styles.remove}>✕</Text>
-              </Pressable>
-            </View>
-            <View style={styles.lineBottom}>
-              <QuantityStepper value={it.qty} onChange={(q) => updateQty(it.lineId, q)} />
-              <Text style={styles.linePrice}>{formatPrice(it.unitCents * it.qty)}</Text>
-            </View>
-          </Card>
+              <View style={styles.lineBottom}>
+                <QuantityStepper value={it.qty} onChange={(q) => updateQty(it.lineId, q)} />
+                <Text style={styles.linePrice}>{formatPrice(it.unitCents * it.qty)}</Text>
+              </View>
+            </Card>
+          </FadeInView>
         ))}
 
         <Pressable onPress={clearCart} style={{ alignSelf: 'flex-end', paddingVertical: 8 }}>

@@ -2,12 +2,13 @@
 // and (once READY) an "Open Door" button that pops the solenoid via the backend.
 // Polls live so it flips to "Ready!" the moment the barista marks it ready.
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, Animated } from 'react-native';
 
 import ScreenContainer from '../components/ScreenContainer';
 import QRDisplay from '../components/QRDisplay';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
+import { FadeInView, PopIn, usePulse } from '../components/anim';
 
 import useOrderLive from '../utils/useOrderLive';
 import { openDoor } from '../api/orders';
@@ -29,6 +30,8 @@ export default function QRCodeScreen({ route, navigation }) {
   const { clearActive } = useCart();
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState('');
+  // Soft pulse for the door badge while the order is READY.
+  const pulse = usePulse({ to: 1.05, duration: 800 });
 
   const onOpen = useCallback(async () => {
     setOpenError('');
@@ -63,22 +66,30 @@ export default function QRCodeScreen({ route, navigation }) {
   return (
     <ScreenContainer>
       <View style={styles.center}>
-        <View style={[styles.checkBubble, isReady && { backgroundColor: '#3a9e68' }]}>
-          <Text style={styles.checkText}>{isDone ? '🎉' : '✓'}</Text>
-        </View>
-        <Text style={styles.title}>{isReady ? 'Ready for Pickup!' : isDone ? 'All Done!' : 'Order Placed!'}</Text>
-        <Text style={styles.subtitle}>{eta.detail || 'Your coffee is being prepared ☕'}</Text>
+        {/* Check bubble pops in, and re-pops on every status change. */}
+        <PopIn trigger={order.status}>
+          <View style={[styles.checkBubble, isReady && { backgroundColor: '#3a9e68' }]}>
+            <Text style={styles.checkText}>{isDone ? '🎉' : '✓'}</Text>
+          </View>
+        </PopIn>
+        <FadeInView delay={100}>
+          <Text style={styles.title}>{isReady ? 'Ready for Pickup!' : isDone ? 'All Done!' : 'Order Placed!'}</Text>
+          <Text style={[styles.subtitle, { textAlign: 'center' }]}>{eta.detail || 'Your coffee is being prepared ☕'}</Text>
+        </FadeInView>
 
-        <View style={styles.doorBadge}>
-          <Text style={styles.doorLabel}>YOUR DOOR</Text>
-          <Text style={styles.doorNumber}>{doorNo != null ? doorNo : '—'}</Text>
-          <Text style={styles.doorSub}>{order.locker?.location || 'Coffee Counter'}</Text>
-        </View>
+        {/* Door badge pulses gently once the order is READY. */}
+        <Animated.View style={isReady ? { transform: [{ scale: pulse }] } : null}>
+          <View style={[styles.doorBadge, isReady && styles.doorBadgeReady]}>
+            <Text style={styles.doorLabel}>YOUR DOOR</Text>
+            <Text style={styles.doorNumber}>{doorNo != null ? doorNo : '—'}</Text>
+            <Text style={styles.doorSub}>{order.locker?.location || 'Coffee Counter'}</Text>
+          </View>
+        </Animated.View>
 
         {!isDone ? (
-          <View style={{ marginTop: 8, marginBottom: 14 }}>
+          <FadeInView delay={180} style={{ marginTop: 8, marginBottom: 14 }}>
             <QRDisplay value={qrToken} size={180} />
-          </View>
+          </FadeInView>
         ) : null}
 
         <View style={styles.idBox}>
@@ -150,6 +161,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingVertical: 14, paddingHorizontal: 40,
     marginTop: 16, marginBottom: 6,
+  },
+  doorBadgeReady: {
+    backgroundColor: 'rgba(58,158,104,0.15)',
+    borderColor: 'rgba(76,175,125,0.45)',
   },
   doorLabel: { color: colors.creamFaint, fontSize: 10, letterSpacing: 2, fontWeight: '700' },
   doorNumber: { color: colors.accentLight, fontSize: 48, fontWeight: '800', lineHeight: 54 },

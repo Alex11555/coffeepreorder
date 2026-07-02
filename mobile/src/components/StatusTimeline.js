@@ -2,7 +2,7 @@
 //
 // `current` is one of: PAID, PREPARING, READY, PICKED_UP.
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { colors, spacing } from '../theme/colors';
 
 const STEPS = [
@@ -30,10 +30,23 @@ function stateOf(stepKey, current) {
 export default function StatusTimeline({ current }) {
   const ci = ORDER.indexOf(current);
   const fillPct = ci <= 0 ? 0 : (ci / (ORDER.length - 1)) * 100;
+
+  // Animate the amber line growing to the current step whenever status moves.
+  const fill = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    Animated.timing(fill, {
+      toValue: fillPct,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // height % — layout property
+    }).start();
+  }, [fill, fillPct]);
+  const h = fill.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+
   return (
     <View style={styles.wrap}>
       <View style={styles.track} />
-      <View style={[styles.fill, { height: `${fillPct}%` }]} />
+      <Animated.View style={[styles.fill, { height: h }]} />
       {STEPS.map((s) => {
         const state = stateOf(s.key, current);
         return (

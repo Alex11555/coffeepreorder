@@ -1,8 +1,9 @@
 // Tile in the menu grid — real product photo on top (emoji fallback),
-// info + add CTA below.
+// info + add CTA below. Spring-scales on press.
 import React, { useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressScale } from './anim';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatPrice } from '../utils/format';
 
@@ -11,9 +12,10 @@ export default function ProductCard({ product, onPress }) {
   const showImage = product.imageUrl && !imgFailed;
 
   return (
-    <Pressable
+    <PressScale
       onPress={() => onPress?.(product)}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.9 }]}
+      to={0.95}
+      style={styles.card}
     >
       {showImage ? (
         <Image
@@ -43,7 +45,7 @@ export default function ProductCard({ product, onPress }) {
           </View>
         </View>
       </View>
-    </Pressable>
+    </PressScale>
   );
 }
 

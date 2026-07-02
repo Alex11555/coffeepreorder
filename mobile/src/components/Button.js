@@ -1,8 +1,9 @@
 // Primary CTA — gradient amber pill with optional subtitle, plus a quieter
-// secondary variant for back/cancel actions.
+// secondary variant. Presses spring-scale down for tactile feedback.
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { Text, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressScale } from './anim';
 import { colors, radius, spacing } from '../theme/colors';
 
 export default function Button({
@@ -36,9 +37,11 @@ export default function Button({
 
   if (variant === 'primary') {
     return (
-      <Pressable
-        onPress={isDisabled ? undefined : onPress}
-        style={({ pressed }) => [styles.shell, isDisabled && styles.disabled, pressed && styles.pressed, style]}
+      <PressScale
+        onPress={onPress}
+        disabled={isDisabled}
+        to={0.97}
+        style={[styles.shell, isDisabled && styles.disabled, style]}
       >
         <LinearGradient
           colors={[colors.accent, colors.accentLight]}
@@ -48,23 +51,19 @@ export default function Button({
         >
           {Inner}
         </LinearGradient>
-      </Pressable>
+      </PressScale>
     );
   }
 
   return (
-    <Pressable
-      onPress={isDisabled ? undefined : onPress}
-      style={({ pressed }) => [
-        styles.shell,
-        styles.secondary,
-        isDisabled && styles.disabled,
-        pressed && styles.pressed,
-        style,
-      ]}
+    <PressScale
+      onPress={onPress}
+      disabled={isDisabled}
+      to={0.97}
+      style={[styles.shell, styles.secondary, isDisabled && styles.disabled, style]}
     >
       {Inner}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -88,7 +87,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  pressed: { opacity: 0.85 },
   disabled: { opacity: 0.45 },
   title: { fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
   titleOnAccent: { color: colors.textInverse },

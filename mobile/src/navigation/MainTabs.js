@@ -10,6 +10,7 @@ import RewardsScreen from '../screens/RewardsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 import { useCart } from '../context/CartContext';
+import { PopIn } from '../components/anim';
 import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -38,7 +39,8 @@ function CartIcon({ focused }) {
     <View style={ICON_BOX}>
       <Text style={emojiStyle(focused)}>🛒</Text>
       {itemCount > 0 ? (
-        <View
+        <PopIn
+          trigger={itemCount}
           style={{
             position: 'absolute', top: 0, right: -2,
             backgroundColor: colors.accent, borderRadius: 9,
@@ -48,7 +50,7 @@ function CartIcon({ focused }) {
           }}
         >
           <Text style={{ color: '#1a0a04', fontSize: 9, fontWeight: '800' }}>{itemCount}</Text>
-        </View>
+        </PopIn>
       ) : null}
     </View>
   );

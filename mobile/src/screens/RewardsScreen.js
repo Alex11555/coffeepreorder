@@ -1,18 +1,40 @@
 // Rewards — loyalty tier, points balance, progress to next tier, and the
 // full tier benefits table.
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import ScreenContainer from '../components/ScreenContainer';
 import Card from '../components/Card';
 import Loading from '../components/Loading';
+import { FadeInView } from '../components/anim';
 
 import { fetchLoyalty } from '../api/auth';
 import { TIERS, tierForPoints, nextTier, tierProgress } from '../utils/loyalty';
 import { colors, radius, spacing } from '../theme/colors';
 import { formatPrice } from '../utils/format';
+
+// Progress bar that sweeps from 0 to `progress` when it appears.
+function AnimatedBar({ progress }) {
+  const width = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(width, {
+      toValue: progress,
+      duration: 900,
+      delay: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width % can't ride the native driver
+    }).start();
+  }, [width, progress]);
+
+  const w = width.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+  return (
+    <View style={styles.barTrack}>
+      <Animated.View style={[styles.barFill, { width: w }]} />
+    </View>
+  );
+}
 
 export default function RewardsScreen() {
   const [loyalty, setLoyalty] = useState(null);
@@ -47,37 +69,39 @@ export default function RewardsScreen() {
       </View>
 
       {/* Tier hero card */}
-      <LinearGradient
-        colors={[tier.color, '#1a0a04']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        <Text style={styles.heroEmoji}>{tier.emoji}</Text>
-        <Text style={styles.heroTier}>{tier.name} Member</Text>
-        <Text style={styles.heroBalance}>{balance}</Text>
-        <Text style={styles.heroBalanceLabel}>points · worth {formatPrice(balance)}</Text>
-      </LinearGradient>
+      <FadeInView>
+        <LinearGradient
+          colors={[tier.color, '#1a0a04']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <Text style={styles.heroEmoji}>{tier.emoji}</Text>
+          <Text style={styles.heroTier}>{tier.name} Member</Text>
+          <Text style={styles.heroBalance}>{balance}</Text>
+          <Text style={styles.heroBalanceLabel}>points · worth {formatPrice(balance)}</Text>
+        </LinearGradient>
+      </FadeInView>
 
       {/* Progress to next tier */}
-      <Card style={styles.progressCard}>
-        {next ? (
-          <>
-            <View style={styles.progressTop}>
-              <Text style={styles.progressLabel}>{tier.name}</Text>
-              <Text style={styles.progressLabel}>{next.emoji} {next.name}</Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
-            </View>
-            <Text style={styles.progressHint}>
-              {next.min - lifetime} more lifetime points to reach {next.name}
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.maxedOut}>💎 You've reached the top tier. Enjoy the perks!</Text>
-        )}
-      </Card>
+      <FadeInView delay={80}>
+        <Card style={styles.progressCard}>
+          {next ? (
+            <>
+              <View style={styles.progressTop}>
+                <Text style={styles.progressLabel}>{tier.name}</Text>
+                <Text style={styles.progressLabel}>{next.emoji} {next.name}</Text>
+              </View>
+              <AnimatedBar progress={progress} />
+              <Text style={styles.progressHint}>
+                {next.min - lifetime} more lifetime points to reach {next.name}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.maxedOut}>💎 You've reached the top tier. Enjoy the perks!</Text>
+          )}
+        </Card>
+      </FadeInView>
 
       {/* How it works */}
       <Text style={styles.section}>How it works</Text>
@@ -90,21 +114,23 @@ export default function RewardsScreen() {
       {/* Tier benefits table */}
       <Text style={styles.section}>Tiers & benefits</Text>
       <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
-        {TIERS.map((t) => {
+        {TIERS.map((t, i) => {
           const isCurrent = t.key === tier.key;
           return (
-            <View key={t.key} style={[styles.tierRow, isCurrent && styles.tierRowActive]}>
-              <Text style={styles.tierEmoji}>{t.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.tierName}>
-                  {t.name}{isCurrent ? '  • you' : ''}
-                </Text>
-                <Text style={styles.tierMeta}>
-                  {t.min}+ pts · {t.multiplier}× earning
-                  {t.discountPct > 0 ? ` · ${t.discountPct}% off` : ''}
-                </Text>
+            <FadeInView key={t.key} delay={160 + i * 70}>
+              <View style={[styles.tierRow, isCurrent && styles.tierRowActive]}>
+                <Text style={styles.tierEmoji}>{t.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.tierName}>
+                    {t.name}{isCurrent ? '  • you' : ''}
+                  </Text>
+                  <Text style={styles.tierMeta}>
+                    {t.min}+ pts · {t.multiplier}× earning
+                    {t.discountPct > 0 ? ` · ${t.discountPct}% off` : ''}
+                  </Text>
+                </View>
               </View>
-            </View>
+            </FadeInView>
           );
         })}
       </View>

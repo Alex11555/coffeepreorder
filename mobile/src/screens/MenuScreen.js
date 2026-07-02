@@ -9,6 +9,7 @@ import Pill from '../components/Pill';
 import ProductCard from '../components/ProductCard';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';
+import { FadeInView } from '../components/anim';
 
 import { fetchMenu } from '../api/menu';
 import { useAuth } from '../context/AuthContext';
@@ -59,15 +60,19 @@ export default function MenuScreen({ navigation }) {
       refreshing={refreshing}
       onRefresh={() => { setRefreshing(true); load(); }}
     >
-      <Greeting user={user} />
+      <FadeInView>
+        <Greeting user={user} />
+      </FadeInView>
 
       {featured ? (
-        <HeroBanner
-          tag="☕ Featured"
-          title={`${featured.name}\nfor today`}
-          subtitle={featured.description}
-          emoji={featured.emoji || '☕'}
-        />
+        <FadeInView delay={60}>
+          <HeroBanner
+            tag="☕ Featured"
+            title={`${featured.name}\nfor today`}
+            subtitle={featured.description}
+            emoji={featured.emoji || '☕'}
+          />
+        </FadeInView>
       ) : null}
 
       <Text style={styles.section}>Our Menu</Text>
@@ -88,12 +93,16 @@ export default function MenuScreen({ navigation }) {
       ) : (
         <View style={styles.grid}>
           {filtered.map((p, i) => (
-            <View key={p.id} style={[styles.cell, i % 2 === 0 ? { paddingRight: 7 } : { paddingLeft: 7 }]}>
+            <FadeInView
+              key={`${category}-${p.id}`}
+              delay={100 + Math.min(i, 8) * 55}
+              style={[styles.cell, i % 2 === 0 ? { paddingRight: 7 } : { paddingLeft: 7 }]}
+            >
               <ProductCard
                 product={p}
                 onPress={() => navigation.navigate('Order', { product: p })}
               />
-            </View>
+            </FadeInView>
           ))}
         </View>
       )}
