@@ -2,8 +2,7 @@
 
 Pre-order coffee from your phone, pay, and pick it up from a **smart locker
 cabinet** — no waiting in line. A barista manages orders live from a web
-dashboard, and a Raspberry Pi physically unlocks the right compartment when
-the customer is ready.
+dashboard, and a Raspberry Pi physically unlocks the right compartment when the customer is ready.
 
 Four pieces:
 
@@ -47,6 +46,7 @@ one screen. No monolith files.
 ## Features
 
 **Customer app (mobile/)**
+
 - Email/password auth (JWT). Google sign-in wired (needs a dev build).
 - Menu with real product photos + category filter; live weather greeting.
 - Shopping cart — multiple different drinks in one order.
@@ -58,17 +58,20 @@ one screen. No monolith files.
 - 4 clean tabs: Menu · Cart · Rewards · Profile (orders live in Profile).
 
 **Barista dashboard (dashboard/)**
+
 - Staff login (STAFF role only).
 - Live 4-column board (New → Preparing → Ready → Picked Up) via SSE.
 - One-click status changes; each card shows the door number to fill.
 - Delete one / clear all picked-up orders.
 
 **Backend (server/)**
+
 - REST API + two SSE feeds (staff firehose + per-order channel).
 - Auto-assign compartment, QR mint (hashed), loyalty math, push fan-out.
 - `locker-hub` poll/ack endpoints for the Pi (shared-secret auth).
 
 **Raspberry Pi (pi/)**
+
 - One cabinet, 4 compartments → 4 relays/solenoids on GPIO 17/27/22/23.
 - `locker_hub.py` — owns the relays, polls the backend, opens doors, plus a
   Flask web UI with manual unlock buttons.
@@ -172,26 +175,26 @@ into the LAN, so the Pi reaches out instead. 2s latency is fine for a door.
 
 ## API surface
 
-| Method | Path | Auth | Purpose |
-|-------:|------|------|---------|
-| POST | `/api/auth/signup` `/signin` | — | register / login (JWT) |
-| GET | `/api/auth/me` | user | profile + loyalty summary |
-| GET | `/api/auth/loyalty` | user | points / tier / progress |
-| POST | `/api/auth/push-token` | user | register Expo push token |
-| GET | `/api/menu` | user | products (with photos, emoji, category) |
-| GET | `/api/lockers` | user | compartments + status |
-| POST | `/api/orders` | user | create order (cart, auto-door, loyalty) |
-| GET | `/api/orders` | user | own order history |
-| GET | `/api/orders/:id` | owner/staff | one order |
-| GET | `/api/orders/:id/stream` | owner/staff | SSE: one order's live state |
-| POST | `/api/orders/:id/open` | owner/staff | open the door (button path) |
-| GET | `/api/orders/active` | staff | orders on the bar |
-| GET | `/api/orders/picked-up` | staff | completed orders |
-| GET | `/api/orders/stream` | staff | SSE: all order events |
-| PATCH | `/api/orders/:id/status` | staff | PAID→PREPARING→READY / CANCELLED |
-| DELETE | `/api/orders/:id` · `/picked-up` | staff | delete finalized order(s) |
-| POST | `/api/pickup/scan` | — | QR scan path (hardware) |
-| GET | `/api/locker-hub/pending` · POST `/ack` | hub key | Pi poll/ack |
+| Method | Path                                    | Auth        | Purpose                                 |
+| -----: | --------------------------------------- | ----------- | --------------------------------------- |
+|   POST | `/api/auth/signup` `/signin`            | —           | register / login (JWT)                  |
+|    GET | `/api/auth/me`                          | user        | profile + loyalty summary               |
+|    GET | `/api/auth/loyalty`                     | user        | points / tier / progress                |
+|   POST | `/api/auth/push-token`                  | user        | register Expo push token                |
+|    GET | `/api/menu`                             | user        | products (with photos, emoji, category) |
+|    GET | `/api/lockers`                          | user        | compartments + status                   |
+|   POST | `/api/orders`                           | user        | create order (cart, auto-door, loyalty) |
+|    GET | `/api/orders`                           | user        | own order history                       |
+|    GET | `/api/orders/:id`                       | owner/staff | one order                               |
+|    GET | `/api/orders/:id/stream`                | owner/staff | SSE: one order's live state             |
+|   POST | `/api/orders/:id/open`                  | owner/staff | open the door (button path)             |
+|    GET | `/api/orders/active`                    | staff       | orders on the bar                       |
+|    GET | `/api/orders/picked-up`                 | staff       | completed orders                        |
+|    GET | `/api/orders/stream`                    | staff       | SSE: all order events                   |
+|  PATCH | `/api/orders/:id/status`                | staff       | PAID→PREPARING→READY / CANCELLED        |
+| DELETE | `/api/orders/:id` · `/picked-up`        | staff       | delete finalized order(s)               |
+|   POST | `/api/pickup/scan`                      | —           | QR scan path (hardware)                 |
+|    GET | `/api/locker-hub/pending` · POST `/ack` | hub key     | Pi poll/ack                             |
 
 ## Loyalty system
 

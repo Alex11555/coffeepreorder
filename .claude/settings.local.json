@@ -47,7 +47,13 @@
       "Bash(node -e \"console.log\\('react-native-screens', require\\('./node_modules/react-native-screens/package.json'\\).version\\)\")",
       "Bash(node -e \"const d=require\\('./package.json'\\).dependencies; Object.keys\\(d\\).filter\\(k=>k.includes\\('navigation'\\)||k.includes\\('gesture'\\)||k.includes\\('reanimated'\\)||k.includes\\('screens'\\)\\).forEach\\(k=>console.log\\(k, d[k]\\)\\)\")",
       "Bash(node --check App.js)",
-      "Bash(node -e \"const s=require\\('@react-navigation/stack'\\); console.log\\('createStackNavigator:', typeof s.createStackNavigator\\); console.log\\('CardStyleInterpolators:', typeof s.CardStyleInterpolators\\); console.log\\('TransitionSpecs:', typeof s.TransitionSpecs\\); console.log\\('forHorizontalIOS:', typeof s.CardStyleInterpolators.forHorizontalIOS\\)\")"
+      "Bash(node -e \"const s=require\\('@react-navigation/stack'\\); console.log\\('createStackNavigator:', typeof s.createStackNavigator\\); console.log\\('CardStyleInterpolators:', typeof s.CardStyleInterpolators\\); console.log\\('TransitionSpecs:', typeof s.TransitionSpecs\\); console.log\\('forHorizontalIOS:', typeof s.CardStyleInterpolators.forHorizontalIOS\\)\")",
+      "Bash(node --check mobile/App.js)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit -m 'rewrite scanner.py for Pi Camera Module 3 \\(Picamera2/libcamera\\) *)",
+      "Bash(git commit -m 'scanner: enable Module 3 autofocus + optional live preview *)",
+      "Bash(git commit *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/vite/package.json'\\).version\\)\")"
     ]
   }
 }
