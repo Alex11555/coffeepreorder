@@ -1,0 +1,5 @@
+# Local secrets: never commit these (a real .env belongs only on the machine that runs the app)
+.env
+.env.*
+!.env.example
+pi/.env
